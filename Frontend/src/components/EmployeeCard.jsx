@@ -6,7 +6,7 @@ import {
   CardContent, 
   Typography, 
   Box, 
-  Avatar, 
+  Avatar,  
   Stack, 
   Chip,
   Tooltip,
