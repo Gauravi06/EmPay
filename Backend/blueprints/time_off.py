@@ -26,11 +26,33 @@ def request_time_off(current_user):
         if not data.get(field):
             return jsonify({'error': f'{field} is required'}), 400
 
+    VALID_TYPES = ('casual', 'sick', 'annual', 'maternity', 'paternity', 'unpaid', 'other')
+    if data['type'] not in VALID_TYPES:
+        return jsonify({'error': f'Invalid leave type. Must be one of: {", ".join(VALID_TYPES)}'}), 400
+
+    import datetime as dt
+    try:
+        start = dt.date.fromisoformat(data['startDate'])
+        end = dt.date.fromisoformat(data['endDate'])
+    except ValueError:
+        return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
+
+    today = dt.date.today()
+    if start < today:
+        return jsonify({'error': 'Start date cannot be in the past'}), 400
+
+    if end < start:
+        return jsonify({'error': 'End date cannot be before start date'}), 400
+
+    days = int(data['days'])
+    if days <= 0:
+        return jsonify({'error': 'Days must be a positive number'}), 400
+
     conn = get_db()
     conn.execute('''
         INSERT INTO time_off (user_id, type, start_date, end_date, days, reason)
         VALUES (?, ?, ?, ?, ?, ?)
-    ''', (current_user['id'], data['type'], data['startDate'], data['endDate'], data['days'], data['reason']))
+    ''', (current_user['id'], data['type'], data['startDate'], data['endDate'], days, data['reason']))
     conn.commit()
     return jsonify({'message': 'Request submitted successfully'}), 201
 

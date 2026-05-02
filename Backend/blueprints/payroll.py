@@ -45,11 +45,19 @@ def generate_payroll(current_user):
     if not user:
         return jsonify({'error': 'User not found'}), 404
 
+    # Check for duplicate payroll entry
+    existing = conn.execute(
+        'SELECT id FROM payroll WHERE user_id = ? AND month = ? AND year = ?',
+        (employee_id, month, year)
+    ).fetchone()
+    if existing:
+        return jsonify({'error': f'Payroll for this employee for {month}/{year} already exists'}), 409
+
     # Simple generation logic
     salary = user['salary'] or 50000
-    deductions = salary * 0.12 # PF etc
+    deductions = salary * 0.12  # PF etc
     net = salary - deductions
-    
+
     conn.execute('''
         INSERT INTO payroll (user_id, month, year, basic_salary, deductions, net_salary, status)
         VALUES (?, ?, ?, ?, ?, ?, 'pending')
@@ -65,8 +73,16 @@ def update_payroll_status(current_user, payroll_id):
     status = data.get('status')
     if not status:
         return jsonify({'error': 'Status is required'}), 400
-        
+
+    VALID_STATUSES = ('pending', 'processing', 'paid', 'cancelled')
+    if status not in VALID_STATUSES:
+        return jsonify({'error': f'Invalid status. Must be one of: {", ".join(VALID_STATUSES)}'}), 400
+
     conn = get_db()
+    record = conn.execute('SELECT id FROM payroll WHERE id = ?', (payroll_id,)).fetchone()
+    if not record:
+        return jsonify({'error': 'Payroll record not found'}), 404
+
     conn.execute('UPDATE payroll SET status = ? WHERE id = ?', (status, payroll_id))
     conn.commit()
     return jsonify({'message': 'Payroll status updated'})

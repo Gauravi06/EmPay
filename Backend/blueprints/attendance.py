@@ -76,20 +76,29 @@ def check_in(current_user):
         return jsonify({'error': 'Date and time are required'}), 400
         
     conn = get_db()
+    existing = conn.execute(
+        'SELECT * FROM attendance WHERE user_id = ? AND date = ?',
+        (current_user['id'], date)
+    ).fetchone()
+
+    if existing and existing['check_in']:
+        return jsonify({'error': 'Already checked in for today', 'checkIn': existing['check_in']}), 400
+
     try:
-        conn.execute('''
-            INSERT INTO attendance (user_id, date, check_in, status)
-            VALUES (?, ?, ?, 'present')
-        ''', (current_user['id'], date, time))
+        if existing:
+            conn.execute(
+                'UPDATE attendance SET check_in = ?, status = ? WHERE user_id = ? AND date = ?',
+                (time, 'present', current_user['id'], date)
+            )
+        else:
+            conn.execute(
+                'INSERT INTO attendance (user_id, date, check_in, status) VALUES (?, ?, ?, ?)',
+                (current_user['id'], date, time, 'present')
+            )
         conn.commit()
-        return jsonify({'message': 'Checked in successfully'})
+        return jsonify({'message': 'Checked in successfully', 'checkIn': time})
     except Exception as e:
-        # Try update if already exists
-        conn.execute('''
-            UPDATE attendance SET check_in = ? WHERE user_id = ? AND date = ?
-        ''', (time, current_user['id'], date))
-        conn.commit()
-        return jsonify({'message': 'Check-in updated'})
+        return jsonify({'error': f'Check-in failed: {str(e)}'}), 500
 
 @attendance_bp.route('/check-out', methods=['POST'])
 @token_required
@@ -102,11 +111,76 @@ def check_out(current_user):
         return jsonify({'error': 'Date and time are required'}), 400
         
     conn = get_db()
-    conn.execute('''
-        UPDATE attendance SET check_out = ? WHERE user_id = ? AND date = ?
-    ''', (time, current_user['id'], date))
+    record = conn.execute(
+        'SELECT * FROM attendance WHERE user_id = ? AND date = ?',
+        (current_user['id'], date)
+    ).fetchone()
+
+    if not record:
+        return jsonify({'error': 'No check-in found for this date. Please check in first.'}), 400
+
+    # Allow re-checkout if check_out == check_in (corrupted record from old bug)
+    if record['check_out'] and record['check_out'] != record['check_in']:
+        return jsonify({'error': 'Already checked out for today'}), 400
+
+    # Calculate work_hours
+    work_hours = None
+    if record['check_in']:
+        try:
+            from datetime import datetime as dt
+            fmt = '%H:%M'
+            ci = dt.strptime(record['check_in'], fmt)
+            co = dt.strptime(time, fmt)
+            diff_seconds = (co - ci).seconds
+            # Handle overnight (negative diff) - cap at 0
+            if co < ci:
+                diff_seconds = 0
+            work_hours = round(diff_seconds / 3600, 2)
+        except Exception:
+            pass
+
+    conn.execute(
+        'UPDATE attendance SET check_out = ?, work_hours = ? WHERE user_id = ? AND date = ?',
+        (time, work_hours, current_user['id'], date)
+    )
     conn.commit()
-    return jsonify({'message': 'Checked out successfully'})
+    return jsonify({'message': 'Checked out successfully', 'workHours': work_hours})
+
+@attendance_bp.route('/auto-checkout', methods=['POST'])
+@token_required
+def auto_checkout(current_user):
+    """Called by frontend at 6pm to auto-checkout employees still checked in."""
+    import datetime as dt_mod
+    date = dt_mod.datetime.now().strftime('%Y-%m-%d')
+    checkout_time = '18:00'
+
+    conn = get_db()
+    record = conn.execute(
+        'SELECT * FROM attendance WHERE user_id = ? AND date = ?',
+        (current_user['id'], date)
+    ).fetchone()
+
+    if not record or not record['check_in']:
+        return jsonify({'message': 'No active check-in found'}), 200
+
+    if record['check_out'] and record['check_out'] != record['check_in']:
+        return jsonify({'message': 'Already checked out'}), 200
+
+    try:
+        from datetime import datetime as dt
+        ci = dt.strptime(record['check_in'], '%H:%M')
+        co = dt.strptime(checkout_time, '%H:%M')
+        diff = (co - ci).seconds
+        work_hours = round(diff / 3600, 2) if co > ci else 0
+    except Exception:
+        work_hours = 0
+
+    conn.execute(
+        'UPDATE attendance SET check_out = ?, work_hours = ? WHERE user_id = ? AND date = ?',
+        (checkout_time, work_hours, current_user['id'], date)
+    )
+    conn.commit()
+    return jsonify({'message': 'Auto checked out at 18:00', 'workHours': work_hours})
 
 @attendance_bp.route('/today', methods=['GET'])
 @token_required

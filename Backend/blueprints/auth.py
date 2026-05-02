@@ -41,7 +41,8 @@ def login():
 @auth_bp.route('/me', methods=['GET'])
 @token_required
 def get_me(current_user):
-    return jsonify({'user': _safe_user(current_user)})
+    # current_user is already sanitized by token_required, return it directly
+    return jsonify({'user': current_user})
 
 @auth_bp.route('/signup', methods=['POST'])
 def signup():
@@ -76,8 +77,15 @@ def signup():
     user_count = conn.execute('SELECT COUNT(*) FROM users').fetchone()[0]
     role = 'admin' if user_count == 0 else 'employee'
 
-    # Generate Login ID: EMP001, EMP002...
-    login_id = f"EMP{str(user_count + 1).zfill(3)}"
+    # Generate a unique Login ID: EMP001, EMP002...
+    # Keep incrementing until we find one that doesn't exist
+    n = user_count + 1
+    while True:
+        candidate = f"EMP{str(n).zfill(3)}"
+        if not conn.execute('SELECT id FROM users WHERE login_id = ?', (candidate,)).fetchone():
+            break
+        n += 1
+    login_id = candidate
     
     password_hash = generate_password_hash(password)
     
