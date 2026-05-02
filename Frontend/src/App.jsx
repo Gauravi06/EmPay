@@ -20,7 +20,7 @@ import { useAuthStore, MODULES, PERMISSIONS } from './stores/authStore'
 function App() {
   const { isAuthenticated, refreshUser } = useAuthStore()
 
-  // Validate stored token on every app load — clears stale tokens from old sessions
+  // Validate stored token on every app load
   useEffect(() => {
     if (isAuthenticated) {
       refreshUser()
@@ -31,9 +31,10 @@ function App() {
     <Router>
       <Toaster position="top-right" />
       <Routes>
-        <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" />} />
-        <Route path="/signup" element={!isAuthenticated ? <SignUp /> : <Navigate to="/dashboard" />} />
-        <Route path="/" element={<Navigate to="/login" />} />
+        {/* After login → always land on /dashboard */}
+        <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" replace />} />
+        <Route path="/signup" element={!isAuthenticated ? <SignUp /> : <Navigate to="/dashboard" replace />} />
+        <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} />
 
         {/* Protected Routes */}
         <Route path="/dashboard" element={
@@ -46,6 +47,7 @@ function App() {
             <EmployeeList />
           </ProtectedRoute>
         } />
+        {/* Employee profile — view only, opened from card click */}
         <Route path="/employee/:id" element={
           <ProtectedRoute module={MODULES.EMPLOYEES} permission={PERMISSIONS.VIEW}>
             <EmployeeProfile />

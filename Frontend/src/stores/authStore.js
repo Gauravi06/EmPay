@@ -117,7 +117,7 @@ export const useAuthStore = create(
             method: 'POST',
             body: JSON.stringify(signupData)
           })
-          return { success: true, loginId: data.loginId, role: data.role }
+          return { success: true, loginId: data.user.loginId, role: data.user.role }
         } catch (e) {
           return { success: false, message: e.message }
         }

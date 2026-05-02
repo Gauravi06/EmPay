@@ -7,10 +7,25 @@ import {
 } from 'lucide-react'
 import { useAuthStore, MODULES, PERMISSIONS, ROLES } from '../stores/authStore'
 
+// Same EmPay logo as SignUp page
+const EmPayLogo = () => (
+  <div style={{
+    width: 40, height: 40, borderRadius: 12,
+    background: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    boxShadow: '0 4px 14px rgba(109,40,217,0.35)', flexShrink: 0,
+  }}>
+    <svg width="22" height="18" viewBox="0 0 26 22" fill="none">
+      <rect x="1" y="3" width="24" height="16" rx="3" stroke="white" strokeWidth="2" />
+      <path d="M1 8h24" stroke="white" strokeWidth="2" />
+      <rect x="5" y="12" width="6" height="3" rx="1" fill="white" />
+    </svg>
+  </div>
+)
+
 const Sidebar = () => {
   const { logout, user, hasPermission } = useAuthStore()
 
-  // Build menu dynamically based on permissions
   const allItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', always: true },
     { path: '/employees', icon: Users, label: 'Employees', module: MODULES.EMPLOYEES, permission: PERMISSIONS.VIEW },
@@ -39,9 +54,15 @@ const Sidebar = () => {
       transition={{ duration: 0.3 }}
       className="w-64 bg-white border-r border-gray-200 h-screen fixed left-0 top-0 overflow-y-auto flex flex-col"
     >
+      {/* Logo — matches SignUp page style */}
       <div className="p-6 border-b border-gray-200">
-        <h1 className="text-xl font-bold text-primary-600">EmPay</h1>
-        <p className="text-xs text-gray-500 mt-1">Smart HR Management</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <EmPayLogo />
+          <div>
+            <h1 className="text-xl font-bold text-primary-600">EmPay</h1>
+            <p className="text-xs text-gray-500">Smart HR Management</p>
+          </div>
+        </div>
       </div>
 
       {user && (

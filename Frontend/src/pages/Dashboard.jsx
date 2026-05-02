@@ -2,20 +2,30 @@ import React, { useEffect, useState } from 'react'
 import { useAuthStore, ROLES } from '../stores/authStore'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
+import EmployeeCard from '../components/EmployeeCard'
 import { motion } from 'framer-motion'
-import { Users, DollarSign, Calendar, Clock, AlertCircle } from 'lucide-react'
+import { Users, DollarSign, Calendar, Clock } from 'lucide-react'
 import {
-  LineChart, Line, BarChart, Bar, XAxis, YAxis,
-  CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis,
+  CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts'
 import toast from 'react-hot-toast'
 
 const Dashboard = () => {
-  const { user, markAttendance, getTodayAttendance, fetchEmployees, fetchReportsSummary, hasPermission } = useAuthStore()
+  const {
+    user, markAttendance, getTodayAttendance,
+    fetchEmployees, fetchReportsSummary, hasPermission
+  } = useAuthStore()
+
+  const [employees, setEmployees] = useState([])
   const [checkedIn, setCheckedIn] = useState(false)
+  const [checkInTime, setCheckInTime] = useState(null)
   const [todayAtt, setTodayAtt] = useState([])
-  const [summary, setSummary] = useState({ totalEmployees: 0, presentToday: 0, pendingLeaves: 0, totalPayroll: 0, monthlyPayroll: [], departmentDistribution: [] })
+  const [summary, setSummary] = useState({
+    totalEmployees: 0, presentToday: 0, pendingLeaves: 0,
+    totalPayroll: 0, monthlyPayroll: [], departmentDistribution: []
+  })
   const [loading, setLoading] = useState(true)
 
   const canViewReports = hasPermission('reports', 'view')
@@ -25,12 +35,22 @@ const Dashboard = () => {
       try {
         const att = await getTodayAttendance()
         setTodayAtt(att || [])
+
+        const emps = await fetchEmployees()
+        setEmployees(emps || [])
+
         if (canViewReports) {
           const s = await fetchReportsSummary()
           setSummary(s)
         } else {
-          const emps = await fetchEmployees()
-          setSummary(prev => ({ ...prev, totalEmployees: emps.length }))
+          setSummary(prev => ({ ...prev, totalEmployees: (emps || []).length }))
+        }
+
+        // Check if current user already checked in today
+        const myRecord = (att || []).find(a => a.id === user?.id)
+        if (myRecord?.check_in) {
+          setCheckedIn(true)
+          setCheckInTime(myRecord.check_in)
         }
       } catch (e) {
         console.error(e)
@@ -47,7 +67,7 @@ const Dashboard = () => {
   const attendanceData = [
     { name: 'Present', value: presentToday, color: '#10b981' },
     { name: 'On Leave', value: onLeave, color: '#3b82f6' },
-    { name: 'Other', value: Math.max(0, (todayAtt.length - presentToday - onLeave)), color: '#f59e0b' }
+    { name: 'Other', value: Math.max(0, todayAtt.length - presentToday - onLeave), color: '#f59e0b' }
   ].filter(d => d.value > 0)
 
   const handleCheckIn = async () => {
@@ -56,10 +76,23 @@ const Dashboard = () => {
       const now = new Date().toTimeString().slice(0, 5)
       await markAttendance(user.id, today, now, null, 0)
       setCheckedIn(true)
+      setCheckInTime(now)
       toast.success('Checked in successfully!')
-      setTimeout(() => setCheckedIn(false), 3000)
     } catch (e) {
       toast.error('Failed to check in')
+    }
+  }
+
+  const handleCheckOut = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      const now = new Date().toTimeString().slice(0, 5)
+      await markAttendance(user.id, today, checkInTime, now, 0)
+      toast.success('Checked out successfully!')
+      setCheckedIn(false)
+      setCheckInTime(null)
+    } catch (e) {
+      toast.error('Failed to check out')
     }
   }
 
@@ -68,72 +101,121 @@ const Dashboard = () => {
       <Sidebar />
       <Header />
       <main className="ml-64 pt-16 p-6">
+
+        {/* Welcome */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
           <p className="text-gray-600">Welcome back, {user?.first_name}!</p>
         </div>
 
-        {/* Check In - only employees */}
+        {/* Check In / Check Out — employees only */}
         {user?.role === ROLES.EMPLOYEE && (
-          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
-            <button
-              onClick={handleCheckIn}
-              className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2"
-            >
-              <Clock className="w-5 h-5" />
-              Check In for Today
-            </button>
-            {checkedIn && (
-              <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-green-600 mt-2">
-                ✅ Successfully checked in!
-              </motion.p>
+          <motion.div
+            initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}
+            className="mb-6 flex items-center gap-4"
+          >
+            {!checkedIn ? (
+              <button
+                onClick={handleCheckIn}
+                className="flex items-center gap-2 px-6 py-3 rounded-xl text-white font-semibold transition-all"
+                style={{ background: 'linear-gradient(135deg,#7C3AED,#6D28D9)', boxShadow: '0 4px 14px rgba(109,40,217,0.35)' }}
+              >
+                <Clock className="w-5 h-5" />
+                Check In
+              </button>
+            ) : (
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-xl">
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#10b981' }} />
+                  <span className="text-sm text-green-700 font-medium">Checked in since {checkInTime}</span>
+                </div>
+                <button
+                  onClick={handleCheckOut}
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl text-white font-semibold"
+                  style={{ background: 'linear-gradient(135deg,#ef4444,#dc2626)', boxShadow: '0 4px 14px rgba(220,38,38,0.3)' }}
+                >
+                  <Clock className="w-5 h-5" />
+                  Check Out
+                </button>
+              </div>
             )}
           </motion.div>
         )}
 
-        {/* Stats Cards */}
+        {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <motion.div whileHover={{ scale: 1.02 }} className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-500 text-sm">Total Employees</p>
-                <p className="text-2xl font-bold text-gray-800">{summary.totalEmployees}</p>
+          {[
+            { label: 'Total Employees', value: summary.totalEmployees, icon: Users, color: '#7C3AED', bg: '#EDE9FE' },
+            { label: 'Present Today', value: summary.presentToday || presentToday, icon: Calendar, color: '#10b981', bg: '#d1fae5' },
+            { label: 'Pending Leaves', value: summary.pendingLeaves || 0, icon: Clock, color: '#3b82f6', bg: '#dbeafe' },
+            {
+              label: 'Total Payroll Paid',
+              value: `₹${(summary.totalPayroll || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`,
+              icon: DollarSign, color: '#6366f1', bg: '#e0e7ff'
+            },
+          ].map((stat, i) => (
+            <motion.div key={i} whileHover={{ scale: 1.02 }} className="bg-white rounded-xl shadow-sm p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-500 text-sm">{stat.label}</p>
+                  <p className="text-2xl font-bold mt-1" style={{ color: stat.color }}>{stat.value}</p>
+                </div>
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: stat.bg }}>
+                  <stat.icon className="w-6 h-6" style={{ color: stat.color }} />
+                </div>
               </div>
-              <Users className="w-10 h-10 text-primary-500" />
-            </div>
-          </motion.div>
+            </motion.div>
+          ))}
+        </div>
 
-          <motion.div whileHover={{ scale: 1.02 }} className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-500 text-sm">Present Today</p>
-                <p className="text-2xl font-bold text-green-600">{summary.presentToday || presentToday}</p>
-              </div>
-              <Calendar className="w-10 h-10 text-green-500" />
-            </div>
-          </motion.div>
+        {/* Employee Cards Grid */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-800">Employees</h2>
+            <span className="text-sm text-gray-500">{employees.length} total</span>
+          </div>
 
-          <motion.div whileHover={{ scale: 1.02 }} className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-500 text-sm">Pending Leaves</p>
-                <p className="text-2xl font-bold text-blue-600">{summary.pendingLeaves || 0}</p>
-              </div>
-              <Clock className="w-10 h-10 text-blue-500" />
+          {/* Legend */}
+          <div className="flex items-center gap-5 mb-4 text-xs text-gray-500">
+            <div className="flex items-center gap-1.5">
+              <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#10b981' }} />
+              <span>Present</span>
             </div>
-          </motion.div>
+            <div className="flex items-center gap-1.5">
+              <svg viewBox="0 0 24 24" fill="#3b82f6" width="12" height="12">
+                <path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2 1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z" />
+              </svg>
+              <span>On Leave</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#f59e0b' }} />
+              <span>Absent</span>
+            </div>
+          </div>
 
-          <motion.div whileHover={{ scale: 1.02 }} className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-500 text-sm">Total Payroll Paid</p>
-                <p className="text-2xl font-bold text-indigo-600">
-                  ₹{(summary.totalPayroll || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-                </p>
-              </div>
-              <DollarSign className="w-10 h-10 text-indigo-500" />
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="bg-white rounded-xl shadow-sm p-5 animate-pulse">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="w-14 h-14 bg-gray-200 rounded-full" />
+                    <div className="flex-1">
+                      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+                      <div className="h-3 bg-gray-200 rounded w-1/2" />
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-          </motion.div>
+          ) : employees.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {employees.map((emp) => (
+                <EmployeeCard key={emp.id} employee={emp} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-400 text-center py-12">No employees found</p>
+          )}
         </div>
 
         {/* Charts */}
@@ -141,12 +223,12 @@ const Dashboard = () => {
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h3 className="font-semibold text-gray-800 mb-4">Today's Attendance</h3>
             {attendanceData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={260}>
+              <ResponsiveContainer width="100%" height={240}>
                 <PieChart>
                   <Pie data={attendanceData} cx="50%" cy="50%"
                     labelLine={false}
                     label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={90} dataKey="value">
+                    outerRadius={85} dataKey="value">
                     {attendanceData.map((entry, i) => (
                       <Cell key={i} fill={entry.color} />
                     ))}
@@ -162,13 +244,13 @@ const Dashboard = () => {
           <div className="bg-white rounded-xl shadow-sm p-6">
             <h3 className="font-semibold text-gray-800 mb-4">Monthly Payroll</h3>
             {summary.monthlyPayroll?.length > 0 ? (
-              <ResponsiveContainer width="100%" height={260}>
+              <ResponsiveContainer width="100%" height={240}>
                 <BarChart data={summary.monthlyPayroll.slice(0, 6).reverse()}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
                   <YAxis />
                   <Tooltip formatter={v => `₹${v?.toLocaleString('en-IN')}`} />
-                  <Bar dataKey="total_payroll" fill="#6366f1" name="Net Payroll" />
+                  <Bar dataKey="total_payroll" fill="#7C3AED" name="Net Payroll" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
@@ -187,7 +269,7 @@ const Dashboard = () => {
                 <XAxis type="number" />
                 <YAxis dataKey="department" type="category" width={120} />
                 <Tooltip />
-                <Bar dataKey="count" fill="#10b981" />
+                <Bar dataKey="count" fill="#10b981" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
