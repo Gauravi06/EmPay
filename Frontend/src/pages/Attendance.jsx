@@ -6,7 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   ChevronLeft, ChevronRight, Search, Plus, Download,
   Clock, CheckCircle2, XCircle, CalendarDays, TrendingUp,
-  Users, UserCheck, Timer, AlertCircle, LogIn, LogOut, Plane
+  Users, UserCheck, Timer, AlertCircle, LogIn, LogOut, Plane,
+  History, X
 } from 'lucide-react'
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval,
@@ -24,6 +25,20 @@ const fmtHours = (h) => {
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
+/* Work hours: 09:00 – 18:00 */
+const WORK_START = { h: 9, m: 0 }
+const WORK_END = { h: 18, m: 0 }
+
+const toMinutes = (h, m) => h * 60 + m
+const WORK_START_MIN = toMinutes(WORK_START.h, WORK_START.m)
+const WORK_END_MIN = toMinutes(WORK_END.h, WORK_END.m)
+
+/** Returns current time in minutes from midnight */
+const nowMinutes = () => {
+  const n = new Date()
+  return toMinutes(n.getHours(), n.getMinutes())
+}
+
 /* ─── Status dot ─── */
 const StatusDot = ({ status }) => {
   if (status === 'present') return <span className="w-3 h-3 rounded-full bg-green-500 ring-2 ring-green-200 inline-block" title="Present" />
@@ -32,7 +47,7 @@ const StatusDot = ({ status }) => {
 }
 
 /* ─── Avatar ─── */
-const Avatar = ({ first, last, size = 'md', src }) => {
+const Avatar = ({ first, last, size = 'md' }) => {
   const sizes = { sm: 'w-8 h-8 text-xs', md: 'w-12 h-12 text-sm', lg: 'w-16 h-16 text-lg' }
   return (
     <div className={`${sizes[size]} rounded-full bg-gradient-to-br from-primary-400 to-blue-600 flex items-center justify-center text-white font-bold flex-shrink-0`}>
@@ -41,8 +56,8 @@ const Avatar = ({ first, last, size = 'md', src }) => {
   )
 }
 
-/* ─── Employee Status Card (Admin grid view) ─── */
-const EmployeeStatusCard = ({ emp, rec, adminDate }) => {
+/* ─── Employee Status Card (Admin/HR grid view) ─── */
+const EmployeeStatusCard = ({ emp, rec, adminDate, onViewHistory }) => {
   const resolveStatus = () => {
     if (!rec) return 'absent'
     const d = new Date((rec.date || format(adminDate, 'yyyy-MM-dd')) + 'T00:00:00')
@@ -67,18 +82,17 @@ const EmployeeStatusCard = ({ emp, rec, adminDate }) => {
       animate={{ opacity: 1, y: 0 }}
       className={`rounded-2xl border ${borderColor} p-4 flex flex-col items-center gap-3 relative group hover:shadow-md transition-all duration-200`}
     >
-      {/* Status dot top-right */}
       <div className="absolute top-3 right-3">
         <StatusDot status={status} />
       </div>
 
-      <Avatar first={emp.first_name} last={emp.last_name} size="lg" />
+      <Avatar first={emp.firstName || emp.first_name} last={emp.lastName || emp.last_name} size="lg" />
 
       <div className="text-center">
         <p className="text-sm font-bold text-gray-800 leading-tight">
-          {emp.first_name} {emp.last_name}
+          {emp.firstName || emp.first_name} {emp.lastName || emp.last_name}
         </p>
-        <p className="text-xs text-gray-400 mt-0.5">{emp.department || emp.login_id}</p>
+        <p className="text-xs text-gray-400 mt-0.5">{emp.department || emp.loginId || emp.login_id}</p>
       </div>
 
       <div className="w-full space-y-1 text-xs">
@@ -111,6 +125,14 @@ const EmployeeStatusCard = ({ emp, rec, adminDate }) => {
           </div>
         )}
       </div>
+
+      {/* View history button */}
+      <button
+        onClick={() => onViewHistory(emp)}
+        className="w-full mt-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors"
+      >
+        <History className="w-3.5 h-3.5" /> View History
+      </button>
     </motion.div>
   )
 }
@@ -126,7 +148,7 @@ const StatCard = ({ icon: Icon, label, value, sub, color }) => {
   }
   const c = colors[color] || colors.blue
   return (
-    <div className={`${c.bg} rounded-xl p-4 flex items-center gap-4`}>
+    <div className={`${c.bg} bg-opacity-70 backdrop-blur-md rounded-2xl p-4 flex items-center gap-4 border border-white shadow-sm hover:shadow-md transition-all duration-300`}>
       <div className={`${c.icon} p-2.5 rounded-lg flex-shrink-0`}>
         <Icon className="w-5 h-5" />
       </div>
@@ -171,6 +193,25 @@ const RingProgress = ({ pct, size = 56, stroke = 5, color = '#2563eb' }) => {
   )
 }
 
+/* ─── Time window banner ─── */
+const TimeWindowBanner = ({ now }) => {
+  const mins = toMinutes(now.getHours(), now.getMinutes())
+  const beforeWork = mins < WORK_START_MIN
+  const afterWork = mins >= WORK_END_MIN
+
+  if (!beforeWork && !afterWork) return null
+
+  return (
+    <div className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium
+      ${beforeWork ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}>
+      <Clock className="w-4 h-4 flex-shrink-0" />
+      {beforeWork
+        ? `Check-in opens at 9:00 AM · Office hours: 9:00 AM – 6:00 PM`
+        : `Office hours ended at 6:00 PM · See you tomorrow!`}
+    </div>
+  )
+}
+
 /* ─── Check In/Out Panel (Employee) ─── */
 const CheckInOutPanel = ({ onCheckIn, onCheckOut, todayRecord, loading }) => {
   const [now, setNow] = useState(new Date())
@@ -179,18 +220,22 @@ const CheckInOutPanel = ({ onCheckIn, onCheckOut, todayRecord, loading }) => {
     return () => clearInterval(t)
   }, [])
 
+  const mins = toMinutes(now.getHours(), now.getMinutes())
+  const withinHours = mins >= WORK_START_MIN && mins < WORK_END_MIN
+
   const isCheckedIn = !!todayRecord?.check_in
   const isCheckedOut = !!todayRecord?.check_out
   const isInProgress = isCheckedIn && !isCheckedOut
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex flex-col items-center gap-5">
+    <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white shadow-sm hover:shadow-md transition-all duration-300 p-6 flex flex-col items-center gap-4">
       {/* Live clock */}
       <div className="text-center">
         <p className="text-3xl font-bold text-gray-800 tabular-nums tracking-tight">
           {format(now, 'HH:mm:ss')}
         </p>
         <p className="text-xs text-gray-400 mt-1">{format(now, 'EEEE, d MMMM yyyy')}</p>
+        <p className="text-xs text-gray-300 mt-0.5">Office hours: 09:00 – 18:00</p>
       </div>
 
       {/* Status indicator */}
@@ -202,7 +247,7 @@ const CheckInOutPanel = ({ onCheckIn, onCheckOut, todayRecord, loading }) => {
         {isCheckedOut ? 'Completed for today' : isInProgress ? 'Currently checked in' : 'Not checked in'}
       </div>
 
-      {/* Check in/out times */}
+      {/* Check in/out times display */}
       {isCheckedIn && (
         <div className="w-full grid grid-cols-2 gap-3 text-center">
           <div className="bg-green-50 rounded-xl p-3">
@@ -216,13 +261,23 @@ const CheckInOutPanel = ({ onCheckIn, onCheckOut, todayRecord, loading }) => {
         </div>
       )}
 
+      {/* Time window notice */}
+      {!withinHours && !isCheckedOut && (
+        <div className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-medium
+          ${mins < WORK_START_MIN ? 'bg-amber-50 text-amber-700 border border-amber-100' : 'bg-gray-50 text-gray-500 border border-gray-100'}`}>
+          <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+          {mins < WORK_START_MIN ? 'Check-in available from 9:00 AM' : 'Office hours ended at 6:00 PM'}
+        </div>
+      )}
+
       {/* Action buttons */}
       <div className="w-full flex gap-3">
         {!isCheckedIn && (
           <button
             onClick={onCheckIn}
-            disabled={loading}
-            className="flex-1 flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-bold text-sm hover:opacity-90 active:scale-[0.98] transition-all shadow-sm disabled:opacity-50"
+            disabled={loading || !withinHours}
+            title={!withinHours ? (mins < WORK_START_MIN ? 'Check-in opens at 9:00 AM' : 'Office hours have ended') : 'Check in'}
+            className="flex-1 flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-bold text-sm hover:opacity-90 active:scale-[0.98] transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <LogIn className="w-4 h-4" />
             Check In
@@ -231,8 +286,9 @@ const CheckInOutPanel = ({ onCheckIn, onCheckOut, todayRecord, loading }) => {
         {isInProgress && (
           <button
             onClick={onCheckOut}
-            disabled={loading}
-            className="flex-1 flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-primary-600 to-blue-500 text-white rounded-xl font-bold text-sm hover:opacity-90 active:scale-[0.98] transition-all shadow-sm disabled:opacity-50"
+            disabled={loading || !withinHours}
+            title={!withinHours ? 'Office hours have ended — auto checkout will apply' : 'Check out'}
+            className="flex-1 flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-primary-600 to-blue-500 text-white rounded-xl font-bold text-sm hover:opacity-90 active:scale-[0.98] transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <LogOut className="w-4 h-4" />
             Check Out
@@ -258,7 +314,7 @@ const ManualEntryModal = ({ onClose, onSave, userId, employees, isAdminOrHR }) =
     check_out: '',
     break_time: 60,
   })
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const setF = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   return (
     <AnimatePresence>
@@ -281,33 +337,33 @@ const ManualEntryModal = ({ onClose, onSave, userId, employees, isAdminOrHR }) =
             {isAdminOrHR && (
               <div>
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Employee</label>
-                <select value={form.employee_id} onChange={e => set('employee_id', e.target.value)}
+                <select value={form.employee_id} onChange={e => setF('employee_id', e.target.value)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-primary-500/30">
                   <option value="">Select employee…</option>
-                  {employees.map(e => <option key={e.id} value={e.id}>{e.first_name} {e.last_name}</option>)}
+                  {employees.map(e => <option key={e.id} value={e.id}>{e.firstName || e.first_name} {e.lastName || e.last_name}</option>)}
                 </select>
               </div>
             )}
             <div>
               <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Date</label>
-              <input type="date" value={form.date} onChange={e => set('date', e.target.value)}
+              <input type="date" value={form.date} onChange={e => setF('date', e.target.value)}
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-primary-500/30" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Check In</label>
-                <input type="time" value={form.check_in} onChange={e => set('check_in', e.target.value)}
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Check In <span className="text-gray-400 font-normal">(09:00–18:00)</span></label>
+                <input type="time" value={form.check_in} min="09:00" max="18:00" onChange={e => setF('check_in', e.target.value)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-primary-500/30" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Check Out</label>
-                <input type="time" value={form.check_out} onChange={e => set('check_out', e.target.value)}
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Check Out <span className="text-gray-400 font-normal">(max 18:00)</span></label>
+                <input type="time" value={form.check_out} min={form.check_in || '09:00'} max="18:00" onChange={e => setF('check_out', e.target.value)}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-primary-500/30" />
               </div>
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Break Time (minutes)</label>
-              <input type="number" value={form.break_time} onChange={e => set('break_time', parseInt(e.target.value) || 0)}
+              <input type="number" value={form.break_time} onChange={e => setF('break_time', parseInt(e.target.value) || 0)}
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-primary-500/30" />
             </div>
           </div>
@@ -317,7 +373,22 @@ const ManualEntryModal = ({ onClose, onSave, userId, employees, isAdminOrHR }) =
               className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50">
               Discard
             </button>
-            <button onClick={() => { if (!form.check_in) { toast.error('Check-in required'); return } onSave(form) }}
+            <button onClick={() => {
+              if (!form.check_in) { toast.error('Check-in time required'); return }
+              const [ciH, ciM] = form.check_in.split(':').map(Number)
+              const ciMins = toMinutes(ciH, ciM)
+              if (ciMins < WORK_START_MIN || ciMins >= WORK_END_MIN) {
+                toast.error('Check-in must be between 09:00 and 18:00')
+                return
+              }
+              if (form.check_out) {
+                const [coH, coM] = form.check_out.split(':').map(Number)
+                const coMins = toMinutes(coH, coM)
+                if (coMins > WORK_END_MIN) { toast.error('Check-out cannot be after 18:00'); return }
+                if (coMins <= ciMins) { toast.error('Check-out must be after check-in'); return }
+              }
+              onSave(form)
+            }}
               className="flex-1 px-4 py-2.5 bg-gradient-to-r from-primary-600 to-blue-500 text-white rounded-xl text-sm font-semibold hover:opacity-90 shadow-sm">
               Save Entry
             </button>
@@ -328,12 +399,184 @@ const ManualEntryModal = ({ onClose, onSave, userId, employees, isAdminOrHR }) =
   )
 }
 
+/* ─── HR Employee History Modal ─── */
+const EmployeeHistoryModal = ({ emp, onClose, getMonthlyAttendance }) => {
+  const [month, setMonth] = useState(new Date())
+  const [records, setRecords] = useState([])
+  const [loading, setLoading] = useState(false)
+
+  const loadHistory = useCallback(async () => {
+    if (!emp?.id) return
+    setLoading(true)
+    try {
+      const data = await getMonthlyAttendance(emp.id, month.getFullYear(), month.getMonth() + 1)
+      setRecords(data || [])
+    } catch { setRecords([]) }
+    finally { setLoading(false) }
+  }, [emp?.id, month])
+
+  useEffect(() => { loadHistory() }, [loadHistory])
+
+  const resolveStatus = (rec) => {
+    if (!rec) return 'Absent'
+    const d = new Date(rec.date + 'T00:00:00')
+    if (isWeekend(d)) return 'Weekend'
+    if (rec.status === 'leave') return 'On Leave'
+    if (rec.check_in && rec.check_out) {
+      const [h, m] = rec.check_in.split(':').map(Number)
+      return toMinutes(h, m) > toMinutes(9, 5) ? 'Late' : 'Present'
+    }
+    if (rec.check_in) return 'In Progress'
+    return 'Absent'
+  }
+
+  const presentDays = records.filter(r => r.check_in && !isWeekend(new Date(r.date + 'T00:00:00'))).length
+  const totalHours = records.reduce((s, r) => s + (r.work_hours || 0), 0)
+  const lateDays = records.filter(r => {
+    if (!r.check_in) return false
+    const [h, m] = r.check_in.split(':').map(Number)
+    return toMinutes(h, m) > toMinutes(9, 5)
+  }).length
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden"
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-primary-600 to-blue-500 px-6 py-4 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <Avatar first={emp.firstName || emp.first_name} last={emp.lastName || emp.last_name} size="sm" />
+            <div>
+              <h2 className="text-base font-bold text-white">{emp.firstName || emp.first_name} {emp.lastName || emp.last_name}</h2>
+              <p className="text-xs text-white/70">{emp.department || emp.loginId || emp.login_id} · Attendance History</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-white/70 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Summary strip */}
+        <div className="flex items-center gap-6 px-6 py-3 bg-gray-50 border-b border-gray-100 flex-shrink-0 flex-wrap gap-y-2">
+          <div className="flex items-center gap-1.5 text-sm">
+            <button onClick={() => setMonth(m => subMonths(m, 1))} className="p-1 rounded hover:bg-gray-200 text-gray-500"><ChevronLeft className="w-4 h-4" /></button>
+            <span className="font-semibold text-gray-700 min-w-[110px] text-center">{format(month, 'MMMM yyyy')}</span>
+            <button onClick={() => setMonth(m => addMonths(m, 1))} className="p-1 rounded hover:bg-gray-200 text-gray-500"><ChevronRight className="w-4 h-4" /></button>
+          </div>
+          <span className="text-xs text-gray-500"><span className="font-bold text-green-600">{presentDays}</span> days present</span>
+          <span className="text-xs text-gray-500"><span className="font-bold text-amber-600">{lateDays}</span> late</span>
+          <span className="text-xs text-gray-500"><span className="font-bold text-primary-600">{fmtHours(totalHours)}</span> total hours</span>
+        </div>
+
+        {/* Table */}
+        <div className="overflow-y-auto flex-1">
+          <table className="w-full text-left">
+            <thead className="sticky top-0 z-10">
+              <tr className="bg-gray-50 border-b border-gray-100">
+                {['Date', 'Check In', 'Check Out', 'Work Hours', 'Overtime', 'Status'].map(h => (
+                  <th key={h} className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {loading ? (
+                [...Array(8)].map((_, i) => (
+                  <tr key={i}>
+                    {[...Array(6)].map((_, j) => (
+                      <td key={j} className="px-5 py-4">
+                        <div className="h-4 bg-gray-100 rounded animate-pulse" style={{ width: j === 0 ? '120px' : '70px' }} />
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              ) : records.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="text-center py-16">
+                    <CalendarDays className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                    <p className="text-gray-400 text-sm">No attendance records for this month</p>
+                  </td>
+                </tr>
+              ) : (
+                [...records]
+                  .sort((a, b) => b.date.localeCompare(a.date))
+                  .map(rec => {
+                    const d = new Date(rec.date + 'T00:00:00')
+                    const workHrs = rec.work_hours || 0
+                    const extraHrs = Math.max(0, workHrs - 9)
+                    const status = resolveStatus(rec)
+                    const today = isToday(d)
+                    const weekend = isWeekend(d)
+                    return (
+                      <tr key={rec.id || rec.date}
+                        className={`transition-colors ${today ? 'bg-primary-50/40' : weekend ? 'bg-gray-50/50' : 'hover:bg-blue-50/20'}`}>
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-2">
+                            {today && <span className="w-1.5 h-1.5 rounded-full bg-primary-500 flex-shrink-0" />}
+                            <div>
+                              <p className="text-sm font-semibold text-gray-800">{format(d, 'dd MMM yyyy')}</p>
+                              <p className="text-xs text-gray-400">{format(d, 'EEEE')}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-5 py-3.5">
+                          {rec.check_in
+                            ? <span className="flex items-center gap-1.5 text-sm text-gray-700 font-medium">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />{rec.check_in}
+                            </span>
+                            : <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="px-5 py-3.5">
+                          {rec.check_out
+                            ? <span className="flex items-center gap-1.5 text-sm text-gray-700 font-medium">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />{rec.check_out}
+                            </span>
+                            : rec.check_in
+                              ? <span className="flex items-center gap-1 text-blue-500 text-xs font-semibold"><Timer className="w-3 h-3" /> Pending</span>
+                              : <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <span className="text-sm text-gray-700 font-medium">{fmtHours(workHrs)}</span>
+                          {workHrs > 0 && (
+                            <div className="mt-1 h-1 w-14 bg-gray-100 rounded-full overflow-hidden">
+                              <div className="h-full bg-gradient-to-r from-primary-400 to-primary-600 rounded-full"
+                                style={{ width: `${Math.min((workHrs / 9) * 100, 100)}%` }} />
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-5 py-3.5 text-sm">
+                          {extraHrs > 0
+                            ? <span className="flex items-center gap-1 text-green-600 font-semibold text-xs">
+                              <TrendingUp className="w-3 h-3" />+{fmtHours(extraHrs)}
+                            </span>
+                            : <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="px-5 py-3.5"><StatusBadge status={status} /></td>
+                      </tr>
+                    )
+                  })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
 /* ═══════════════════════════════════════════
    MAIN COMPONENT
 ═══════════════════════════════════════════ */
 const Attendance = () => {
-  const { user, markAttendance, checkIn, checkOut, autoCheckOut, getMonthlyAttendance, getTodayAttendance, fetchEmployees } = useAuthStore()
+  const {
+    user, markAttendance, checkIn, checkOut, autoCheckOut,
+    getMonthlyAttendance, getTodayAttendance, fetchEmployees
+  } = useAuthStore()
+
   const isAdminOrHR = user?.role === ROLES.ADMIN || user?.role === ROLES.HR_OFFICER
+  const isPayroll = user?.role === ROLES.PAYROLL_OFFICER
 
   const [loading, setLoading] = useState(true)
   const [employees, setEmployees] = useState([])
@@ -343,8 +586,9 @@ const Attendance = () => {
   const [allAttendance, setAllAttendance] = useState([])
   const [empMonth, setEmpMonth] = useState(new Date())
   const [monthlyAttendance, setMonthlyAttendance] = useState([])
-  const [viewMode, setViewMode] = useState('cards') // 'cards' | 'table'
+  const [viewMode, setViewMode] = useState('cards')
   const [actionLoading, setActionLoading] = useState(false)
+  const [historyEmp, setHistoryEmp] = useState(null) // HR history modal
 
   const empYear = empMonth.getFullYear()
   const empMonthNum = empMonth.getMonth() + 1
@@ -352,7 +596,7 @@ const Attendance = () => {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      if (isAdminOrHR) {
+      if (isAdminOrHR || isPayroll) {
         const emps = await fetchEmployees()
         setEmployees(emps || [])
         const todayData = await getTodayAttendance()
@@ -364,23 +608,19 @@ const Attendance = () => {
       }
     } catch { }
     finally { setLoading(false) }
-  }, [empYear, empMonthNum, user?.id, isAdminOrHR])
+  }, [empYear, empMonthNum, user?.id, isAdminOrHR, isPayroll])
 
   useEffect(() => { if (user) load() }, [load])
 
-  // Auto check-out at 6:00 PM
+  // Auto check-out at 18:00 sharp
   useEffect(() => {
     if (!user) return
-    const checkAutoCheckout = () => {
-      const now = new Date()
-      const h = now.getHours()
-      const m = now.getMinutes()
-      // Trigger at exactly 18:00
-      if (h === 18 && m === 0) {
+    const interval = setInterval(() => {
+      const n = new Date()
+      if (n.getHours() === 18 && n.getMinutes() === 0 && n.getSeconds() < 60) {
         autoCheckOut().then(() => load()).catch(() => { })
       }
-    }
-    const interval = setInterval(checkAutoCheckout, 60000) // check every minute
+    }, 30000)
     return () => clearInterval(interval)
   }, [user])
 
@@ -388,23 +628,55 @@ const Attendance = () => {
   const todayStr = format(new Date(), 'yyyy-MM-dd')
   const todayRecord = monthlyAttendance.find(r => r.date === todayStr)
 
+  /* ── Check In handler — enforces 09:00–18:00 ── */
   const handleCheckIn = async () => {
+    const mins = nowMinutes()
+    if (mins < WORK_START_MIN) {
+      toast.error('Check-in is only available from 9:00 AM')
+      return
+    }
+    if (mins >= WORK_END_MIN) {
+      toast.error('Office hours have ended (6:00 PM). Cannot check in.')
+      return
+    }
+    if (todayRecord?.check_in) {
+      toast.error('You have already checked in today')
+      return
+    }
     setActionLoading(true)
     try {
       const now = format(new Date(), 'HH:mm')
       await checkIn(todayStr, now)
-      toast.success('Checked in successfully!')
+      toast.success(`Checked in at ${now}`)
       load()
     } catch (e) { toast.error(e.message || 'Failed to check in') }
     finally { setActionLoading(false) }
   }
 
+  /* ── Check Out handler — enforces within 09:00–18:00 and must be checked in ── */
   const handleCheckOut = async () => {
+    if (!todayRecord?.check_in) {
+      toast.error('You have not checked in yet')
+      return
+    }
+    if (todayRecord?.check_out) {
+      toast.error('You have already checked out today')
+      return
+    }
+    const mins = nowMinutes()
+    if (mins >= WORK_END_MIN) {
+      toast.error('Office hours ended at 6:00 PM. Auto check-out has been applied.')
+      return
+    }
+    if (mins < WORK_START_MIN) {
+      toast.error('Cannot check out before office hours begin')
+      return
+    }
     setActionLoading(true)
     try {
       const now = format(new Date(), 'HH:mm')
       await checkOut(todayStr, now)
-      toast.success('Checked out successfully!')
+      toast.success(`Checked out at ${now}`)
       load()
     } catch (e) { toast.error(e.message || 'Failed to check out') }
     finally { setActionLoading(false) }
@@ -412,7 +684,7 @@ const Attendance = () => {
 
   const handleManualSave = async (form) => {
     try {
-      const empId = isAdminOrHR ? form.employee_id : user.id
+      const empId = (isAdminOrHR || isPayroll) ? form.employee_id : user.id
       await markAttendance(empId, form.date, form.check_in, form.check_out || null, form.break_time)
       toast.success('Attendance saved')
       setShowManual(false)
@@ -425,16 +697,14 @@ const Attendance = () => {
   const totalWorkDays = daysInMonth.filter(d => !isWeekend(d)).length
   const presentDays = monthlyAttendance.filter(a => {
     if (!a.check_in) return false
-    const d = new Date(a.date + 'T00:00:00')
-    return !isWeekend(d)
+    return !isWeekend(new Date(a.date + 'T00:00:00'))
   }).length
   const leaveCount = monthlyAttendance.filter(a => a.status === 'leave').length
   const lateDays = monthlyAttendance.filter(a => {
     if (!a.check_in) return false
-    const d = new Date(a.date + 'T00:00:00')
-    if (isWeekend(d)) return false
+    if (isWeekend(new Date(a.date + 'T00:00:00'))) return false
     const [h, m] = a.check_in.split(':').map(Number)
-    return h * 60 + m > 9 * 60 + 5
+    return toMinutes(h, m) > toMinutes(9, 5)
   }).length
   const attendanceRate = totalWorkDays > 0 ? Math.round(presentDays / totalWorkDays * 100) : 0
   const totalHours = monthlyAttendance.reduce((s, a) => s + (a.work_hours || 0), 0)
@@ -443,7 +713,8 @@ const Attendance = () => {
 
   const filteredEmployees = employees.filter(e =>
     !searchTerm ||
-    (e.login_id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    `${e.firstName || e.first_name} ${e.lastName || e.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (e.loginId || e.login_id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (e.department || '').toLowerCase().includes(searchTerm.toLowerCase())
   )
 
@@ -454,26 +725,40 @@ const Attendance = () => {
     if (rec.status === 'leave') return 'On Leave'
     if (rec.check_in && rec.check_out) {
       const [h, m] = rec.check_in.split(':').map(Number)
-      return h * 60 + m > 9 * 60 + 5 ? 'Late' : 'Present'
+      return toMinutes(h, m) > toMinutes(9, 5) ? 'Late' : 'Present'
     }
     if (rec.check_in) return 'In Progress'
     return 'Absent'
   }
 
+  const onTimeCount = allAttendance.filter(a => {
+    if (!a.check_in) return false
+    const [h, m] = a.check_in.split(':').map(Number)
+    return toMinutes(h, m) <= toMinutes(9, 5)
+  }).length
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
       <Sidebar />
       <Header />
 
-      <main className="ml-64 pt-16 min-h-screen">
+      {/* HR Employee History Modal */}
+      {historyEmp && (
+        <EmployeeHistoryModal
+          emp={historyEmp}
+          onClose={() => setHistoryEmp(null)}
+          getMonthlyAttendance={getMonthlyAttendance}
+        />
+      )}
 
+      <main className="pt-16 min-h-screen" style={{ marginLeft: 220 }}>
         {/* ── Top bar ── */}
         <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-gray-800">Attendance</h1>
             <p className="text-xs text-gray-400 mt-0.5">
               {isAdminOrHR
-                ? `Today · ${format(new Date(), 'EEEE, d MMMM yyyy')}`
+                ? `Today · ${format(new Date(), 'EEEE, d MMMM yyyy')} · Office hours: 09:00 – 18:00`
                 : `${format(empMonth, 'MMMM yyyy')} overview`}
             </p>
           </div>
@@ -481,12 +766,14 @@ const Attendance = () => {
             <button className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
               <Download className="w-4 h-4" /> Export
             </button>
-            <button
-              onClick={() => setShowManual(true)}
-              className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-white bg-gradient-to-r from-primary-600 to-blue-500 rounded-xl hover:opacity-90 transition-opacity shadow-sm"
-            >
-              <Plus className="w-4 h-4" /> Manual Entry
-            </button>
+            {(isAdminOrHR) && (
+              <button
+                onClick={() => setShowManual(true)}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-white bg-gradient-to-r from-primary-600 to-blue-500 rounded-xl hover:opacity-90 transition-opacity shadow-sm"
+              >
+                <Plus className="w-4 h-4" /> Manual Entry
+              </button>
+            )}
           </div>
         </div>
 
@@ -505,7 +792,7 @@ const Attendance = () => {
                     sub={`${employees.length > 0 ? Math.round(presentCount / employees.length * 100) : 0}% attendance`} />
                   <StatCard icon={XCircle} label="Absent Today" value={absentCount} color="red" />
                   <StatCard icon={TrendingUp} label="On Time"
-                    value={`${employees.length > 0 ? Math.round((presentCount - allAttendance.filter(a => { if (!a.check_in) return false; const [h, m] = a.check_in.split(':').map(Number); return h * 60 + m > 9 * 60 + 5 }).length) / Math.max(presentCount, 1) * 100) : 0}%`}
+                    value={`${presentCount > 0 ? Math.round(onTimeCount / presentCount * 100) : 0}%`}
                     color="purple" sub="of present employees" />
                 </div>
 
@@ -514,6 +801,7 @@ const Attendance = () => {
                   <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-green-500 ring-2 ring-green-200 inline-block" /> Present</span>
                   <span className="flex items-center gap-1.5"><Plane className="w-3.5 h-3.5 text-blue-500" /> On Leave</span>
                   <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-amber-400 ring-2 ring-amber-100 inline-block" /> Absent</span>
+                  <span className="flex items-center gap-1.5 ml-2 text-gray-400 italic">Click "View History" on any card to see monthly records</span>
                 </div>
 
                 {/* Toolbar */}
@@ -566,7 +854,7 @@ const Attendance = () => {
                       {loading ? (
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                           {[...Array(8)].map((_, i) => (
-                            <div key={i} className="rounded-2xl border border-gray-100 bg-gray-50 p-4 h-52 animate-pulse" />
+                            <div key={i} className="rounded-2xl border border-gray-100 bg-gray-50 p-4 h-64 animate-pulse" />
                           ))}
                         </div>
                       ) : filteredEmployees.length === 0 ? (
@@ -577,7 +865,7 @@ const Attendance = () => {
                       ) : (
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                           {filteredEmployees.map((emp, i) => {
-                            const rec = allAttendance.find(a => a.id === emp.id)
+                            const rec = allAttendance.find(a => a.id === emp.id || a.employee_id === emp.id)
                             return (
                               <motion.div
                                 key={emp.id}
@@ -585,7 +873,12 @@ const Attendance = () => {
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: i * 0.04 }}
                               >
-                                <EmployeeStatusCard emp={emp} rec={rec} adminDate={adminDate} />
+                                <EmployeeStatusCard
+                                  emp={emp}
+                                  rec={rec}
+                                  adminDate={adminDate}
+                                  onViewHistory={setHistoryEmp}
+                                />
                               </motion.div>
                             )
                           })}
@@ -600,7 +893,7 @@ const Attendance = () => {
                       <table className="w-full text-left">
                         <thead>
                           <tr className="bg-gray-50 border-b border-gray-100">
-                            {['Employee', 'Check In', 'Check Out', 'Work Hours', 'Extra Hours', 'Status'].map(h => (
+                            {['Employee', 'Check In', 'Check Out', 'Work Hours', 'Extra Hours', 'Status', ''].map(h => (
                               <th key={h} className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
                             ))}
                           </tr>
@@ -609,7 +902,7 @@ const Attendance = () => {
                           {loading ? (
                             [...Array(5)].map((_, i) => (
                               <tr key={i}>
-                                {[...Array(6)].map((_, j) => (
+                                {[...Array(7)].map((_, j) => (
                                   <td key={j} className="px-5 py-4">
                                     <div className="h-4 bg-gray-100 rounded animate-pulse" style={{ width: j === 0 ? '140px' : '70px' }} />
                                   </td>
@@ -617,7 +910,7 @@ const Attendance = () => {
                               </tr>
                             ))
                           ) : filteredEmployees.map(emp => {
-                            const rec = allAttendance.find(a => a.id === emp.id)
+                            const rec = allAttendance.find(a => a.id === emp.id || a.employee_id === emp.id)
                             const workHrs = rec?.work_hours || 0
                             const extraHrs = Math.max(0, workHrs - 9)
                             const status = resolveStatus(rec ? { ...rec, date: format(adminDate, 'yyyy-MM-dd') } : null)
@@ -625,10 +918,10 @@ const Attendance = () => {
                               <tr key={emp.id} className="hover:bg-blue-50/30 transition-colors">
                                 <td className="px-5 py-4">
                                   <div className="flex items-center gap-3">
-                                    <Avatar first={emp.first_name} last={emp.last_name} size="sm" />
+                                    <Avatar first={emp.firstName || emp.first_name} last={emp.lastName || emp.last_name} size="sm" />
                                     <div>
-                                      <p className="text-sm font-semibold text-gray-800">{emp.first_name} {emp.last_name}</p>
-                                      <p className="text-xs text-gray-400">{emp.department || emp.login_id}</p>
+                                      <p className="text-sm font-semibold text-gray-800">{emp.firstName || emp.first_name} {emp.lastName || emp.last_name}</p>
+                                      <p className="text-xs text-gray-400">{emp.department || emp.loginId || emp.login_id}</p>
                                     </div>
                                   </div>
                                 </td>
@@ -653,6 +946,14 @@ const Attendance = () => {
                                     : <span className="text-gray-300">—</span>}
                                 </td>
                                 <td className="px-5 py-4"><StatusBadge status={status} /></td>
+                                <td className="px-5 py-4">
+                                  <button
+                                    onClick={() => setHistoryEmp(emp)}
+                                    className="flex items-center gap-1 text-xs font-semibold text-primary-600 hover:text-primary-800 bg-primary-50 hover:bg-primary-100 px-2.5 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+                                  >
+                                    <History className="w-3.5 h-3.5" /> History
+                                  </button>
+                                </td>
                               </tr>
                             )
                           })}
@@ -683,13 +984,76 @@ const Attendance = () => {
             )}
 
             {/* ════════════════════════
+                PAYROLL OFFICER VIEW (read-only)
+            ════════════════════════ */}
+            {isPayroll && !isAdminOrHR && (
+              <>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <StatCard icon={Users} label="Total Employees" value={employees.length} color="blue" />
+                  <StatCard icon={UserCheck} label="Present Today" value={presentCount} color="green" />
+                  <StatCard icon={XCircle} label="Absent Today" value={absentCount} color="red" />
+                  <StatCard icon={TrendingUp} label="On Time"
+                    value={`${presentCount > 0 ? Math.round(onTimeCount / presentCount * 100) : 0}%`} color="purple" />
+                </div>
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                  <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between">
+                    <h2 className="text-sm font-bold text-gray-700">Today's Attendance — {format(new Date(), 'EEEE, d MMMM yyyy')}</h2>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-3.5 h-3.5" />
+                      <input type="text" placeholder="Search…" value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        className="pl-8 pr-3 py-1.5 border border-gray-200 rounded-xl text-sm bg-gray-50 w-48 outline-none" />
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="bg-gray-50 border-b border-gray-100">
+                          {['Employee', 'Check In', 'Check Out', 'Work Hours', 'Status'].map(h => (
+                            <th key={h} className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {filteredEmployees.map(emp => {
+                          const rec = allAttendance.find(a => a.id === emp.id || a.employee_id === emp.id)
+                          const status = resolveStatus(rec ? { ...rec, date: format(new Date(), 'yyyy-MM-dd') } : null)
+                          return (
+                            <tr key={emp.id} className="hover:bg-blue-50/20 transition-colors">
+                              <td className="px-5 py-4">
+                                <div className="flex items-center gap-3">
+                                  <Avatar first={emp.firstName || emp.first_name} last={emp.lastName || emp.last_name} size="sm" />
+                                  <p className="text-sm font-semibold text-gray-800">{emp.firstName || emp.first_name} {emp.lastName || emp.last_name}</p>
+                                </div>
+                              </td>
+                              <td className="px-5 py-4 text-sm text-gray-700">{rec?.check_in || <span className="text-gray-300">—</span>}</td>
+                              <td className="px-5 py-4 text-sm text-gray-700">
+                                {rec?.check_out || (rec?.check_in
+                                  ? <span className="text-blue-500 text-xs font-semibold">In progress</span>
+                                  : <span className="text-gray-300">—</span>)}
+                              </td>
+                              <td className="px-5 py-4 text-sm text-gray-700 font-medium">{fmtHours(rec?.work_hours || 0)}</td>
+                              <td className="px-5 py-4"><StatusBadge status={status} /></td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* ════════════════════════
                 EMPLOYEE VIEW
             ════════════════════════ */}
-            {!isAdminOrHR && (
+            {!isAdminOrHR && !isPayroll && (
               <>
+                {/* Time window banner */}
+                <TimeWindowBanner now={new Date()} />
+
                 {/* Top row: Check-in panel + Stat cards */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  {/* Check In/Out Panel */}
                   <CheckInOutPanel
                     onCheckIn={handleCheckIn}
                     onCheckOut={handleCheckOut}
@@ -697,9 +1061,7 @@ const Attendance = () => {
                     loading={actionLoading}
                   />
 
-                  {/* Stats (2-col grid in remaining space) */}
                   <div className="lg:col-span-2 grid grid-cols-2 gap-4 content-start">
-                    {/* Ring + rate */}
                     <div className="col-span-2 bg-white rounded-2xl border border-gray-200 shadow-sm p-4 flex items-center gap-5">
                       <div className="relative flex-shrink-0">
                         <RingProgress pct={attendanceRate} size={72} stroke={6} color="#2563eb" />
@@ -725,9 +1087,8 @@ const Attendance = () => {
                   </div>
                 </div>
 
-                {/* Monthly table */}
+                {/* Monthly history table */}
                 <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-                  {/* Toolbar */}
                   <div className="flex items-center gap-3 px-5 py-3.5 border-b border-gray-100 flex-wrap gap-y-2">
                     <div className="flex items-center gap-1">
                       <button onClick={() => setEmpMonth(m => subMonths(m, 1))}
@@ -762,7 +1123,6 @@ const Attendance = () => {
                     </div>
                   </div>
 
-                  {/* Table */}
                   <div className="overflow-x-auto">
                     <table className="w-full text-left">
                       <thead>
@@ -775,13 +1135,11 @@ const Attendance = () => {
                       <tbody className="divide-y divide-gray-50">
                         {loading ? (
                           [...Array(6)].map((_, i) => (
-                            <tr key={i}>
-                              {[...Array(6)].map((_, j) => (
-                                <td key={j} className="px-5 py-4">
-                                  <div className="h-4 bg-gray-100 rounded animate-pulse" style={{ width: j === 0 ? '100px' : '70px' }} />
-                                </td>
-                              ))}
-                            </tr>
+                            <tr key={i}>{[...Array(6)].map((_, j) => (
+                              <td key={j} className="px-5 py-4">
+                                <div className="h-4 bg-gray-100 rounded animate-pulse" style={{ width: j === 0 ? '100px' : '70px' }} />
+                              </td>
+                            ))}</tr>
                           ))
                         ) : monthlyAttendance.length === 0 ? (
                           <tr>
@@ -877,6 +1235,17 @@ const Attendance = () => {
           </motion.div>
         </div>
       </main>
+
+      {/* Manual Entry Modal */}
+      {showManual && (
+        <ManualEntryModal
+          onClose={() => setShowManual(false)}
+          onSave={handleManualSave}
+          userId={user?.id}
+          employees={employees}
+          isAdminOrHR={isAdminOrHR}
+        />
+      )}
     </div>
   )
 }

@@ -79,7 +79,7 @@ const Payroll = () => {
     setGenerating(true)
     try {
       await generatePayroll(targetEmployee.id, selectedYear, selectedMonth)
-      toast.success(`Payroll generated for ${targetEmployee.first_name} ${targetEmployee.last_name}`)
+      toast.success(`Payroll generated for ${targetEmployee.firstName || targetEmployee.first_name} ${targetEmployee.lastName || targetEmployee.last_name}`)
       loadData()
     } catch (e) {
       toast.error(e.message || 'Failed to generate payroll')
@@ -160,11 +160,11 @@ const Payroll = () => {
   const currentMonthGross = monthlyChartData[new Date().getMonth()]?.gross || 0
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
       <Sidebar />
       <Header />
 
-      <main className="ml-64 pt-16 p-6">
+      <main className="pt-16 p-6" style={{ marginLeft: 220 }}>
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="flex justify-between items-center mb-6">
@@ -183,28 +183,28 @@ const Payroll = () => {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-xl shadow-sm p-6 flex items-center justify-between">
+            <div className="bg-white/70 backdrop-blur-xl border border-white rounded-2xl shadow-sm hover:shadow-md transition-shadow p-6 flex items-center justify-between">
               <div>
                 <p className="text-gray-500 text-sm">Total Employees</p>
                 <p className="text-2xl font-bold text-gray-800">{employees.length}</p>
               </div>
               <Users className="w-10 h-10 text-indigo-400" />
             </div>
-            <div className="bg-white rounded-xl shadow-sm p-6 flex items-center justify-between">
+            <div className="bg-white/70 backdrop-blur-xl border border-white rounded-2xl shadow-sm hover:shadow-md transition-shadow p-6 flex items-center justify-between">
               <div>
                 <p className="text-gray-500 text-sm">Monthly Gross Wage</p>
                 <p className="text-2xl font-bold text-green-600">₹{currentMonthGross.toLocaleString()}</p>
               </div>
               <DollarSign className="w-10 h-10 text-green-400" />
             </div>
-            <div className="bg-white rounded-xl shadow-sm p-6 flex items-center justify-between">
+            <div className="bg-white/70 backdrop-blur-xl border border-white rounded-2xl shadow-sm hover:shadow-md transition-shadow p-6 flex items-center justify-between">
               <div>
                 <p className="text-gray-500 text-sm">Payrolls Processed</p>
                 <p className="text-2xl font-bold text-indigo-600">{payrolls.length}</p>
               </div>
               <FileText className="w-10 h-10 text-indigo-400" />
             </div>
-            <div className="bg-white rounded-xl shadow-sm p-6 flex items-center justify-between">
+            <div className="bg-white/70 backdrop-blur-xl border border-white rounded-2xl shadow-sm hover:shadow-md transition-shadow p-6 flex items-center justify-between">
               <div>
                 <p className="text-gray-500 text-sm">This Month</p>
                 <p className="text-2xl font-bold text-purple-600">
@@ -217,7 +217,7 @@ const Payroll = () => {
 
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="bg-white/70 backdrop-blur-xl border border-white rounded-2xl shadow-sm hover:shadow-md transition-shadow p-6">
               <h3 className="font-semibold text-gray-800 mb-4">Monthly Payroll Trends</h3>
               <ResponsiveContainer width="100%" height={260}>
                 <LineChart data={monthlyChartData}>
@@ -232,7 +232,7 @@ const Payroll = () => {
                 </LineChart>
               </ResponsiveContainer>
             </div>
-            <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="bg-white/70 backdrop-blur-xl border border-white rounded-2xl shadow-sm hover:shadow-md transition-shadow p-6">
               <h3 className="font-semibold text-gray-800 mb-4">Department Distribution</h3>
               <ResponsiveContainer width="100%" height={260}>
                 <PieChart>
@@ -247,19 +247,19 @@ const Payroll = () => {
           </div>
 
           {/* Filters */}
-          <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+          <div className="bg-white/70 backdrop-blur-xl border border-white rounded-2xl shadow-sm p-5 mb-8">
             <div className="flex flex-wrap gap-4 items-end">
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Year</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1 ml-1">Year</label>
                 <select value={selectedYear} onChange={e => setSelectedYear(parseInt(e.target.value))}
-                  className="px-3 py-2 border border-gray-300 rounded-lg">
+                  className="px-4 py-2 border-0 bg-white shadow-sm rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 cursor-pointer hover:shadow-md transition-shadow">
                   {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Month</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1 ml-1">Month</label>
                 <select value={selectedMonth} onChange={e => setSelectedMonth(parseInt(e.target.value))}
-                  className="px-3 py-2 border border-gray-300 rounded-lg">
+                  className="px-4 py-2 border-0 bg-white shadow-sm rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 cursor-pointer hover:shadow-md transition-shadow">
                   {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
                     <option key={m} value={m}>{new Date(2024, m - 1).toLocaleString('default', { month: 'long' })}</option>
                   ))}
@@ -267,24 +267,24 @@ const Payroll = () => {
               </div>
               {isAdminOrPayroll && (
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Employee (for generate)</label>
+                  <label className="block text-xs font-medium text-gray-500 mb-1 ml-1">Employee (for generate)</label>
                   <select value={selectedEmployee?.id || ''}
                     onChange={e => setSelectedEmployee(employees.find(emp => emp.id === parseInt(e.target.value)) || null)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg w-48">
+                    className="px-4 py-2 border-0 bg-white shadow-sm rounded-xl text-sm w-48 focus:ring-2 focus:ring-indigo-500 cursor-pointer hover:shadow-md transition-shadow">
                     <option value="">-- Select Employee --</option>
                     {employees.map(emp => (
-                      <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name}</option>
+                      <option key={emp.id} value={emp.id}>{emp.firstName || emp.first_name} {emp.lastName || emp.last_name}</option>
                     ))}
                   </select>
                 </div>
               )}
               <div className="flex-1">
-                <label className="block text-xs text-gray-500 mb-1">Search</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1 ml-1">Search</label>
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-400 w-4 h-4" />
                   <input type="text" placeholder="Search by employee name..."
                     value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg" />
+                    className="w-full pl-11 pr-4 py-2 border-0 bg-white shadow-sm rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 transition-shadow" />
                 </div>
               </div>
             </div>

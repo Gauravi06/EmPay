@@ -57,7 +57,7 @@ const ChangePassword = () => {
       <Sidebar />
       <Header />
       
-      <main className="ml-64 pt-16 p-6">
+      <main className="pt-16 p-6" style={{ marginLeft: 220 }}>
         <div className="max-w-4xl mx-auto">
           <h1 className="text-2xl font-bold text-gray-800 mb-6">Password Management</h1>
           

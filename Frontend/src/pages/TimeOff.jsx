@@ -77,7 +77,8 @@ const TimeOff = () => {
     }
     const employeeId = isAdminOrHR && formData.employeeId ? formData.employeeId : user.id
     try {
-      const result = await submitTimeOff(employeeId, formData.startDate, formData.endDate, formData.reason, formData.type)
+      const days = Math.ceil((new Date(formData.endDate) - new Date(formData.startDate)) / 86400000) + 1
+      const result = await submitTimeOff(formData.type, formData.startDate, formData.endDate, days, formData.reason)
       if (result.success) {
         toast.success('Time off request submitted successfully')
         setShowRequestForm(false)
@@ -150,11 +151,11 @@ const TimeOff = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
       <Sidebar />
       <Header />
 
-      <main className="ml-64 pt-16 p-6">
+      <main className="pt-16 p-6" style={{ marginLeft: 220 }}>
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="flex justify-between items-center mb-6">
@@ -175,22 +176,22 @@ const TimeOff = () => {
             {Object.values(TIME_OFF_TYPES).map(type => {
               const remaining = getRemainingDays(type)
               return (
-                <div key={type} className="bg-white rounded-xl shadow-sm p-4">
-                  <p className="text-xs text-gray-500">{getTypeLabel(type)}</p>
-                  <p className="text-xl font-bold text-indigo-600">{remaining === 'Unlimited' ? '∞' : remaining}</p>
-                  <p className="text-xs text-gray-400">Days Available</p>
+                <div key={type} className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-sm border border-white p-5 hover:shadow-md transition-shadow">
+                  <p className="text-xs font-semibold text-gray-500 tracking-wide uppercase">{getTypeLabel(type)}</p>
+                  <p className="text-2xl font-bold text-indigo-600 mt-2">{remaining === 'Unlimited' ? '∞' : remaining}</p>
+                  <p className="text-xs text-gray-400 mt-1">Days Available</p>
                 </div>
               )
             })}
           </div>
 
           {/* Filters */}
-          <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+          <div className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-sm border border-white p-5 mb-8">
             <div className="flex flex-wrap gap-4">
               <div className="flex items-center gap-2">
-                <Filter className="w-4 h-4 text-gray-400" />
+                <Filter className="w-5 h-5 text-indigo-400" />
                 <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                  className="px-4 py-2 border-0 bg-white shadow-sm rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 cursor-pointer hover:shadow-md transition-shadow">
                   <option value="all">All Status</option>
                   <option value="pending">Pending</option>
                   <option value="approved">Approved</option>
@@ -198,7 +199,7 @@ const TimeOff = () => {
                 </select>
               </div>
               <select value={filterType} onChange={e => setFilterType(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                className="px-4 py-2 border-0 bg-white shadow-sm rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 cursor-pointer hover:shadow-md transition-shadow">
                 <option value="all">All Types</option>
                 {Object.values(TIME_OFF_TYPES).map(t => (
                   <option key={t} value={t}>{getTypeLabel(t)}</option>
@@ -207,10 +208,10 @@ const TimeOff = () => {
               {isAdminOrHR && (
                 <select value={selectedEmployee?.id || ''}
                   onChange={e => setSelectedEmployee(employees.find(em => em.id === parseInt(e.target.value)) || null)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm w-48">
+                  className="px-4 py-2 border-0 bg-white shadow-sm rounded-xl text-sm w-48 focus:ring-2 focus:ring-indigo-500 cursor-pointer hover:shadow-md transition-shadow">
                   <option value="">All Employees</option>
                   {employees.map(emp => (
-                    <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name}</option>
+                    <option key={emp.id} value={emp.id}>{emp.firstName || emp.first_name} {emp.lastName || emp.last_name}</option>
                   ))}
                 </select>
               )}
@@ -219,27 +220,27 @@ const TimeOff = () => {
 
           {/* Lock Period (Admin/HR) */}
           {isAdminOrHR && (
-            <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+            <div className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-sm border border-white p-5 mb-8">
               <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                <Lock className="w-4 h-4" /> Lock Time Off Period
+                <Lock className="w-5 h-5 text-indigo-400" /> Lock Time Off Period
               </h3>
               <div className="flex flex-wrap gap-4 items-end">
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Year</label>
+                  <label className="block text-xs font-medium text-gray-500 mb-1 ml-1">Year</label>
                   <input type="number" value={lockYear} onChange={e => setLockYear(parseInt(e.target.value))}
-                    className="px-3 py-2 border border-gray-300 rounded-lg w-24" />
+                    className="px-4 py-2 border-0 bg-white shadow-sm rounded-xl w-24 focus:ring-2 focus:ring-indigo-500 hover:shadow-md transition-shadow" />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Month</label>
+                  <label className="block text-xs font-medium text-gray-500 mb-1 ml-1">Month</label>
                   <select value={lockMonth} onChange={e => setLockMonth(parseInt(e.target.value))}
-                    className="px-3 py-2 border border-gray-300 rounded-lg">
+                    className="px-4 py-2 border-0 bg-white shadow-sm rounded-xl focus:ring-2 focus:ring-indigo-500 cursor-pointer hover:shadow-md transition-shadow">
                     {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
                       <option key={m} value={m}>{new Date(2024, m - 1).toLocaleString('default', { month: 'long' })}</option>
                     ))}
                   </select>
                 </div>
                 <button onClick={handleLockTimeOff}
-                  className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2">
+                  className="px-5 py-2.5 bg-gray-800 text-white font-medium rounded-xl hover:bg-gray-900 transition-all hover:shadow-lg flex items-center gap-2">
                   <Lock className="w-4 h-4" /> Lock Time Off
                 </button>
               </div>
@@ -354,7 +355,7 @@ const TimeOff = () => {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
                       <option value="">Select Employee</option>
                       {employees.map(emp => (
-                        <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name}</option>
+                        <option key={emp.id} value={emp.id}>{emp.firstName || emp.first_name} {emp.lastName || emp.last_name}</option>
                       ))}
                     </select>
                   </div>

@@ -21,6 +21,10 @@ const EmployeeList = () => {
   })
 
   const canCreate = hasPermission(MODULES.EMPLOYEES, PERMISSIONS.CREATE)
+  const canEdit   = hasPermission(MODULES.EMPLOYEES, PERMISSIONS.EDIT)
+  const canDelete = hasPermission(MODULES.EMPLOYEES, PERMISSIONS.DELETE)
+  const isAdmin   = user?.role === 'admin'
+  const isHR      = user?.role === 'hr_officer'
 
   useEffect(() => {
     const load = async () => {
@@ -37,7 +41,7 @@ const EmployeeList = () => {
   }, [])
 
   const filteredEmployees = employees.filter(emp => {
-    const name = `${emp.first_name} ${emp.last_name} ${emp.email} ${emp.login_id}`.toLowerCase()
+    const name = `${emp.firstName || emp.first_name} ${emp.lastName || emp.last_name} ${emp.email} ${emp.loginId || emp.login_id}`.toLowerCase()
     const matchesSearch = name.includes(searchTerm.toLowerCase())
     const matchesStatus = filterStatus === 'all' || emp.status === filterStatus
     return matchesSearch && matchesStatus
@@ -61,10 +65,10 @@ const EmployeeList = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
       <Sidebar />
       <Header />
-      <main className="ml-64 pt-16 p-6">
+      <main className="pt-16 p-6" style={{ marginLeft: 220 }}>
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-800">Employees</h1>
@@ -81,24 +85,24 @@ const EmployeeList = () => {
           )}
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+        <div className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-sm border border-white p-5 mb-8">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-indigo-400 w-5 h-5" />
               <input
                 type="text"
                 placeholder="Search employees..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                className="w-full pl-12 pr-4 py-3 border-0 bg-white shadow-sm rounded-xl focus:ring-2 focus:ring-indigo-500 transition-shadow"
               />
             </div>
             <div className="relative">
-              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Filter className="absolute left-4 top-1/2 transform -translate-y-1/2 text-indigo-400 w-5 h-5" />
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 appearance-none"
+                className="pl-12 pr-10 py-3 border-0 bg-white shadow-sm rounded-xl focus:ring-2 focus:ring-indigo-500 appearance-none text-gray-700 cursor-pointer hover:shadow-md transition-shadow"
               >
                 <option value="all">All Status</option>
                 <option value="present">Present</option>
@@ -160,7 +164,8 @@ const EmployeeList = () => {
                     ['Email', 'email', 'email'],
                     ['Phone', 'phone', 'text'],
                     ['Department', 'department', 'text'],
-                    ['Salary', 'salary', 'number'],
+                    // Salary only visible/settable by Admin
+                    ...(isAdmin ? [['Salary (₹)', 'salary', 'number']] : []),
                   ].map(([label, key, type]) => (
                     <div key={key}>
                       <label className="text-sm font-medium text-gray-700">{label}</label>
@@ -182,7 +187,8 @@ const EmployeeList = () => {
                       <option value="employee">Employee</option>
                       <option value="hr_officer">HR Officer</option>
                       <option value="payroll_officer">Payroll Officer</option>
-                      {user?.role === 'admin' && <option value="admin">Admin</option>}
+                      {/* Only Admin can create another Admin */}
+                      {isAdmin && <option value="admin">Admin</option>}
                     </select>
                   </div>
                 </div>

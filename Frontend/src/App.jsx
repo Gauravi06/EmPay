@@ -16,6 +16,60 @@ import Settings from './pages/Settings'
 import AdminSettings from './pages/AdminSettings'
 import ProtectedRoute from './components/ProtectedRoute'
 import { useAuthStore, MODULES, PERMISSIONS } from './stores/authStore'
+import { ThemeProvider, createTheme, CssBaseline } from '@mui/material'
+
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: '#7C3AED',
+      light: '#A78BFA',
+      dark: '#6D28D9',
+      contrastText: '#fff',
+    },
+    secondary: {
+      main: '#10b981',
+      light: '#34d399',
+      dark: '#059669',
+    },
+    background: {
+      default: '#F9FAFB',
+      paper: '#FFFFFF',
+    },
+    text: {
+      primary: '#1F2937',
+      secondary: '#6B7280',
+    },
+  },
+  shape: {
+    borderRadius: 12,
+  },
+  typography: {
+    fontFamily: '"DM Sans", "Roboto", "Helvetica", "Arial", sans-serif',
+    h1: { fontWeight: 700 },
+    h2: { fontWeight: 700 },
+    h3: { fontWeight: 700 },
+    h4: { fontWeight: 700 },
+    h5: { fontWeight: 600 },
+    h6: { fontWeight: 600 },
+    button: { textTransform: 'none', fontWeight: 600 },
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          padding: '8px 20px',
+        },
+      },
+    },
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)',
+        },
+      },
+    },
+  },
+})
 
 function App() {
   const { isAuthenticated, refreshUser } = useAuthStore()
@@ -28,7 +82,9 @@ function App() {
   }, [])
 
   return (
-    <Router>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Router>
       <Toaster position="top-right" />
       <Routes>
         {/* After login → always land on /dashboard */}
@@ -94,7 +150,8 @@ function App() {
           </ProtectedRoute>
         } />
       </Routes>
-    </Router>
+      </Router>
+    </ThemeProvider>
   )
 }
 

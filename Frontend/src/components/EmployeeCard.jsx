@@ -1,38 +1,44 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { UserCircle, Mail, Phone, Calendar } from 'lucide-react'
+import { 
+  Card, 
+  CardContent, 
+  Typography, 
+  Box, 
+  Avatar, 
+  Stack, 
+  Chip,
+  Tooltip,
+  Divider
+} from '@mui/material'
+import { 
+  EmailRounded as MailIcon, 
+  PhoneRounded as PhoneIcon, 
+  CalendarTodayRounded as CalendarIcon,
+  AirplanemodeActiveRounded as LeaveIcon,
+  FiberManualRecordRounded as StatusIcon
+} from '@mui/icons-material'
 
-// Status indicator: green dot = present, airplane = on leave, yellow dot = absent
 const StatusIndicator = ({ status }) => {
   if (status === 'present') {
     return (
-      <div title="Present in office" style={{
-        width: 14, height: 14, borderRadius: '50%',
-        background: '#10b981',
-        boxShadow: '0 0 0 2px #d1fae5',
-        flexShrink: 0,
-      }} />
+      <Tooltip title="Present">
+        <StatusIcon sx={{ color: '#10b981', fontSize: 16 }} />
+      </Tooltip>
     )
   }
   if (status === 'leave') {
-    // Airplane icon for on leave
     return (
-      <div title="On leave" style={{ width: 18, height: 18, flexShrink: 0, color: '#3b82f6', display: 'flex', alignItems: 'center' }}>
-        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
-          <path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2 1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z" />
-        </svg>
-      </div>
+      <Tooltip title="On Leave">
+        <LeaveIcon sx={{ color: '#3b82f6', fontSize: 18 }} />
+      </Tooltip>
     )
   }
-  // absent = yellow dot
   return (
-    <div title="Absent" style={{
-      width: 14, height: 14, borderRadius: '50%',
-      background: '#f59e0b',
-      boxShadow: '0 0 0 2px #fef3c7',
-      flexShrink: 0,
-    }} />
+    <Tooltip title="Absent">
+      <StatusIcon sx={{ color: '#f59e0b', fontSize: 16 }} />
+    </Tooltip>
   )
 }
 
@@ -48,51 +54,80 @@ const EmployeeCard = ({ employee }) => {
 
   return (
     <motion.div
-      whileHover={{ scale: 1.02, boxShadow: '0 8px 30px rgba(109,40,217,0.12)' }}
+      whileHover={{ y: -4 }}
       whileTap={{ scale: 0.98 }}
       onClick={() => navigate(`/employee/${employee.id}`)}
-      className="bg-white rounded-xl shadow-md p-5 cursor-pointer relative"
-      style={{ transition: 'box-shadow 0.2s' }}
+      style={{ cursor: 'pointer' }}
     >
-      {/* Status indicator — top right corner */}
-      <div style={{ position: 'absolute', top: 14, right: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
-        <StatusIndicator status={status} />
-      </div>
+      <Card sx={{ 
+        borderRadius: 4, 
+        overflow: 'hidden',
+        transition: 'all 0.3s ease',
+        '&:hover': {
+          boxShadow: '0 12px 24px rgba(124, 58, 237, 0.12)',
+          borderColor: 'primary.light'
+        },
+        border: '1px solid',
+        borderColor: 'divider'
+      }}>
+        <CardContent sx={{ p: 2.5 }}>
+          {/* Top Row: Avatar and Status */}
+          <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 2 }}>
+            <Avatar 
+              src={profilePicture} 
+              sx={{ 
+                width: 56, 
+                height: 56, 
+                bgcolor: 'primary.main',
+                boxShadow: '0 4px 12px rgba(124, 58, 237, 0.2)'
+              }}
+            >
+              {!profilePicture && `${firstName[0]}${lastName[0]}`}
+            </Avatar>
+            <StatusIndicator status={status} />
+          </Stack>
 
-      {/* Avatar + name */}
-      <div className="flex items-center gap-4 mb-4">
-        <div className="w-14 h-14 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0"
-          style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)' }}>
-          {profilePicture ? (
-            <img src={profilePicture} alt="Profile" className="w-full h-full object-cover" />
-          ) : (
-            <UserCircle className="w-9 h-9 text-white" />
-          )}
-        </div>
-        <div style={{ minWidth: 0 }}>
-          <h3 className="font-semibold text-gray-800 truncate">{firstName} {lastName}</h3>
-          <p className="text-xs text-gray-500">{loginId}</p>
-          <p className="text-xs font-medium capitalize" style={{ color: '#7C3AED' }}>
-            {(employee.role || '').replace('_', ' ')}
-          </p>
-        </div>
-      </div>
+          {/* Name and ID */}
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="h6" fontWeight={700} noWrap>
+              {firstName} {lastName}
+            </Typography>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography variant="caption" color="text.secondary">
+                {loginId}
+              </Typography>
+              <Box sx={{ width: 4, height: 4, borderRadius: '50%', bgcolor: 'divider' }} />
+              <Typography variant="caption" color="primary.main" fontWeight={700} sx={{ textTransform: 'uppercase' }}>
+                {(employee.role || '').replace('_', ' ')}
+              </Typography>
+            </Stack>
+          </Box>
 
-      {/* Details */}
-      <div className="space-y-1.5">
-        <div className="flex items-center gap-2 text-sm text-gray-500">
-          <Mail className="w-3.5 h-3.5 flex-shrink-0" />
-          <span className="truncate">{employee.email}</span>
-        </div>
-        <div className="flex items-center gap-2 text-sm text-gray-500">
-          <Phone className="w-3.5 h-3.5 flex-shrink-0" />
-          <span>{employee.phone || 'N/A'}</span>
-        </div>
-        <div className="flex items-center gap-2 text-sm text-gray-500">
-          <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
-          <span>Joined: {joiningDate}</span>
-        </div>
-      </div>
+          <Divider sx={{ mb: 2, borderStyle: 'dashed' }} />
+
+          {/* Contact Details */}
+          <Stack spacing={1}>
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <MailIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+              <Typography variant="body2" color="text.secondary" noWrap>
+                {employee.email}
+              </Typography>
+            </Stack>
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <PhoneIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+              <Typography variant="body2" color="text.secondary">
+                {employee.phone || 'N/A'}
+              </Typography>
+            </Stack>
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <CalendarIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+              <Typography variant="body2" color="text.secondary">
+                Joined: {joiningDate}
+              </Typography>
+            </Stack>
+          </Stack>
+        </CardContent>
+      </Card>
     </motion.div>
   )
 }

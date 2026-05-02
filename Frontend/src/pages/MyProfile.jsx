@@ -157,11 +157,11 @@ const MyProfile = () => {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 font-sans">
       <Sidebar />
       <Header />
 
-      <main className="lg:ml-64 pt-16 p-4 md:p-6">
+      <main className="pt-16 p-4 md:p-6" style={{ marginLeft: 220 }}>
         <div className="max-w-7xl mx-auto">
           {/* Header Card */}
           <div className="bg-gradient-to-r from-blue-700 to-indigo-800 rounded-3xl p-8 text-white mb-8 shadow-2xl overflow-hidden relative">

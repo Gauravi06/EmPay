@@ -28,6 +28,26 @@ const css = `
   }
   .ep-card { width: 100%; max-width: 440px; }
 
+  /* Company branding banner */
+  .ep-company-banner {
+    width: 100%; max-width: 440px;
+    background: white;
+    border-radius: 18px;
+    padding: 18px 24px;
+    display: flex; align-items: center; gap: 16px;
+    box-shadow: 0 4px 24px rgba(109,40,217,0.10);
+    border: 1.5px solid #EDE9FE;
+    margin-bottom: -8px;
+  }
+  .ep-company-logo {
+    width: 56px; height: 56px; object-fit: contain;
+    border-radius: 12px; background: #F5F3FF;
+    padding: 6px; box-sizing: border-box;
+    box-shadow: 0 2px 8px rgba(109,40,217,0.12);
+  }
+  .ep-company-name { font-size: 17px; font-weight: 700; color: #1A1A2E; }
+  .ep-company-sub  { font-size: 12px; color: #A78BFA; margin-top: 2px; font-weight: 500; }
+
   /* Logo */
   .ep-logo-row { display: flex; align-items: center; gap: 12px; margin-bottom: 36px; }
   .ep-logo-icon {
@@ -145,20 +165,28 @@ const EmPayLogo = () => (
 const Login = () => {
   const navigate = useNavigate()
   const { login } = useAuthStore()
-  const [role, setRole] = useState(ROLES[0])
+  const [role, setRole] = useState(null)
   const [loginId, setLoginId] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [roleOpen, setRoleOpen] = useState(false)
   const [loading, setLoading] = useState(false)
 
+  // Read company branding saved during signup
+  const companyLogo = (() => { try { return localStorage.getItem('empay_company_logo') } catch { return null } })()
+  const companyName = (() => { try { return localStorage.getItem('empay_company_name') } catch { return null } })()
+
   const handleLoginIdChange = useCallback((e) => setLoginId(e.target.value), [])
   const handlePasswordChange = useCallback((e) => setPassword(e.target.value), [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (!role) {
+      toast.error('Please select a role first')
+      return
+    }
     setLoading(true)
-    const result = await login(loginId, password)
+    const result = await login(loginId, password, role.id)
     setLoading(false)
     if (result.success) {
       toast.success('Login successful!')
@@ -172,6 +200,23 @@ const Login = () => {
     <>
       <style>{css}</style>
       <div className="ep-page">
+
+        {/* Company branding banner — shown only if logo was uploaded during signup */}
+        {companyLogo && (
+          <motion.div
+            className="ep-company-banner"
+            initial={{ opacity: 0, y: -16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <img src={companyLogo} alt="Company logo" className="ep-company-logo" />
+            <div>
+              <div className="ep-company-name">{companyName || 'Your Company'}</div>
+              <div className="ep-company-sub">Powered by EmPay</div>
+            </div>
+          </motion.div>
+        )}
+
         <motion.div
           className="ep-card"
           initial={{ opacity: 0, y: 24 }}
@@ -194,7 +239,9 @@ const Login = () => {
               <label className="ep-label">Role</label>
               <div className="ep-dd-wrap">
                 <button type="button" className="ep-dd-btn" onClick={() => setRoleOpen(o => !o)}>
-                  <span>{role.label}</span>
+                  <span style={{ color: !role ? '#A78BFA' : 'inherit' }}>
+                    {role ? role.label : 'Select Role'}
+                  </span>
                   <ChevronDown size={18} className={`ep-chev ${roleOpen ? 'ep-chev-open' : ''}`} />
                 </button>
                 <AnimatePresence>
@@ -208,7 +255,7 @@ const Login = () => {
                     >
                       {ROLES.map(r => (
                         <button key={r.id} type="button"
-                          className={`ep-dd-item ${role.id === r.id ? 'ep-active' : ''}`}
+                          className={`ep-dd-item ${role?.id === r.id ? 'ep-active' : ''}`}
                           onClick={() => { setRole(r); setRoleOpen(false); setLoginId(''); setPassword('') }}
                         >
                           <span>{r.label}</span>
@@ -227,7 +274,7 @@ const Login = () => {
               <div className="ep-input-wrap">
                 <span className="ep-icon"><Mail size={17} /></span>
                 <input type="text" className="ep-input"
-                  placeholder={role.hint.split(' / ')[0]}
+                  placeholder={role ? role.hint.split(' / ')[0] : 'Enter Login ID'}
                   value={loginId} onChange={handleLoginIdChange}
                   autoComplete="username" required
                 />
@@ -261,7 +308,9 @@ const Login = () => {
 
             {/* Submit */}
             <motion.button type="submit" className="ep-btn"
-              whileHover={{ scale: 1.015 }} whileTap={{ scale: 0.975 }} disabled={loading}
+              whileHover={{ scale: !role || loading ? 1 : 1.015 }} 
+              whileTap={{ scale: !role || loading ? 1 : 0.975 }} 
+              disabled={loading || !role}
             >
               {loading ? 'Signing in…' : 'Sign In'}
               {!loading && (

@@ -1,6 +1,5 @@
 import sqlite3
 from flask import g
-import os
 
 DATABASE = 'empay.db'
 
@@ -14,6 +13,7 @@ def get_db():
 def init_db(app):
     with app.app_context():
         db = get_db()
+
         # Users Table
         db.execute('''
             CREATE TABLE IF NOT EXISTS users (
@@ -50,8 +50,8 @@ def init_db(app):
                 created_at TEXT DEFAULT (datetime('now'))
             );
         ''')
-        
-        # Attendance Table
+
+        # Attendance Table (with work_hours)
         db.execute('''
             CREATE TABLE IF NOT EXISTS attendance (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -60,12 +60,20 @@ def init_db(app):
                 check_in TEXT,
                 check_out TEXT,
                 status TEXT DEFAULT 'present',
+                work_hours REAL,
                 notes TEXT,
                 FOREIGN KEY (user_id) REFERENCES users (id),
                 UNIQUE(user_id, date)
             );
         ''')
-        
+
+        # Add work_hours column if it doesn't exist (migration for existing DBs)
+        try:
+            db.execute('ALTER TABLE attendance ADD COLUMN work_hours REAL')
+            db.commit()
+        except Exception:
+            pass  # Column already exists
+
         # Payroll Table
         db.execute('''
             CREATE TABLE IF NOT EXISTS payroll (
@@ -82,7 +90,7 @@ def init_db(app):
                 FOREIGN KEY (user_id) REFERENCES users (id)
             );
         ''')
-        
+
         # Time Off Table
         db.execute('''
             CREATE TABLE IF NOT EXISTS time_off (
@@ -91,14 +99,24 @@ def init_db(app):
                 type TEXT NOT NULL,
                 start_date TEXT NOT NULL,
                 end_date TEXT NOT NULL,
-                days INTEGER NOT NULL,
+                days INTEGER NOT NULL DEFAULT 1,
                 reason TEXT,
                 status TEXT DEFAULT 'pending',
                 applied_at TEXT DEFAULT (datetime('now')),
+                approved_by INTEGER,
+                comments TEXT,
                 FOREIGN KEY (user_id) REFERENCES users (id)
             );
         ''')
-        
+
+        # Add missing columns to time_off if they don't exist
+        for col, defn in [('approved_by', 'INTEGER'), ('comments', 'TEXT')]:
+            try:
+                db.execute(f'ALTER TABLE time_off ADD COLUMN {col} {defn}')
+                db.commit()
+            except Exception:
+                pass
+
         # Documents Table
         db.execute('''
             CREATE TABLE IF NOT EXISTS documents (
@@ -111,5 +129,5 @@ def init_db(app):
                 FOREIGN KEY (user_id) REFERENCES users (id)
             );
         ''')
-        
+
         db.commit()

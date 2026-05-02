@@ -118,7 +118,7 @@ const Reports = () => {
     printWindow.document.write(`
       <html>
         <head>
-          <title>Salary Statement Report - ${selectedEmployee?.first_name} ${selectedEmployee?.last_name}</title>
+          <title>Salary Statement Report - ${selectedEmployee?.firstName || selectedEmployee?.first_name} ${selectedEmployee?.lastName || selectedEmployee?.last_name}</title>
           <style>
             body {
               font-family: Arial, sans-serif;
@@ -214,11 +214,11 @@ const Reports = () => {
   const payrollData = getEmployeePayrollData()
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
       <Sidebar />
       <Header />
 
-      <main className="ml-64 pt-16 p-6">
+      <main className="pt-16 p-6" style={{ marginLeft: 220 }}>
         <div className="max-w-7xl mx-auto">
           <div className="flex justify-between items-center mb-6">
             <div>
@@ -228,7 +228,7 @@ const Reports = () => {
           </div>
 
           {/* Report Type Selector */}
-          <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+          <div className="bg-white/70 backdrop-blur-xl border border-white rounded-2xl shadow-sm p-5 mb-8">
             <div className="flex flex-wrap gap-4">
               {[
                 { id: 'salary', label: 'Salary Statement Report', icon: DollarSign },
@@ -259,31 +259,31 @@ const Reports = () => {
               className="space-y-6"
             >
               {/* Selection Panel */}
-              <div className="bg-white rounded-xl shadow-sm p-6">
+              <div className="bg-white/70 backdrop-blur-xl border border-white rounded-2xl shadow-sm p-6 mb-6">
                 <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
                   <FileText className="w-5 h-5" />
                   Salary Statement Report
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Employee Name</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1 ml-1">Employee Name</label>
                     <select
                       value={selectedEmployee?.id || ''}
                       onChange={(e) => setSelectedEmployee(employees.find(emp => emp.id === parseInt(e.target.value)))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-4 py-2.5 border-0 bg-white shadow-sm rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 cursor-pointer hover:shadow-md transition-shadow"
                     >
                       <option value="">Select Employee</option>
                       {employees.map(emp => (
-                        <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name} ({emp.loginId})</option>
+                        <option key={emp.id} value={emp.id}>{emp.firstName || emp.first_name} {emp.lastName || emp.last_name} ({emp.loginId || emp.login_id})</option>
                       ))}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1 ml-1">Year</label>
                     <select
                       value={selectedYear}
                       onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      className="w-full px-4 py-2.5 border-0 bg-white shadow-sm rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 cursor-pointer hover:shadow-md transition-shadow"
                     >
                       {[2024, 2025, 2026].map(y => (
                         <option key={y} value={y}>{y}</option>
@@ -321,7 +321,7 @@ const Reports = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <p className="text-sm text-gray-500">Employee Name</p>
-                          <p className="font-semibold text-gray-800">{selectedEmployee.firstName} {selectedEmployee.lastName}</p>
+                          <p className="font-semibold text-gray-800">{selectedEmployee.firstName || selectedEmployee.first_name} {selectedEmployee.lastName || selectedEmployee.last_name}</p>
                         </div>
                         <div>
                           <p className="text-sm text-gray-500">Employee Code</p>
@@ -362,28 +362,28 @@ const Reports = () => {
                           </tr>
                           <tr>
                             <td className="p-3 border">Basic Salary</td>
-                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.basic_salary?.toFixed(2) || 0}</td>
+                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.basic_salary || 0).toFixed(2)}</td>
                             <td className="p-3 text-right border">₹{payrollData.yearlyTotals.basic.toFixed(2)}</td>
                           </tr>
                           <tr>
                             <td className="p-3 border">House Rent Allowance (HRA)</td>
-                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.house_rent_allowance?.toFixed(2) || 0}</td>
+                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.house_rent_allowance || 0).toFixed(2)}</td>
                             <td className="p-3 text-right border">₹{payrollData.yearlyTotals.hra.toFixed(2)}</td>
                           </tr>
                           <tr>
                             <td className="p-3 border">Standard Allowance</td>
-                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.standard_allowance?.toFixed(2) || 0}</td>
-                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.standard_allowance || 0) * 12}</td>
+                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.standard_allowance || 0).toFixed(2)}</td>
+                            <td className="p-3 text-right border">₹{((payrollData.currentMonthPayroll?.standard_allowance || 0) * 12).toFixed(2)}</td>
                           </tr>
                           <tr>
                             <td className="p-3 border">Performance Bonus</td>
-                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.performance_bonus?.toFixed(2) || 0}</td>
-                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.performance_bonus || 0) * 12}</td>
+                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.performance_bonus || 0).toFixed(2)}</td>
+                            <td className="p-3 text-right border">₹{((payrollData.currentMonthPayroll?.performance_bonus || 0) * 12).toFixed(2)}</td>
                           </tr>
                           <tr>
                             <td className="p-3 border">Leave Travel Allowance</td>
-                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.leave_travel_allowance?.toFixed(2) || 0}</td>
-                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.leave_travel_allowance || 0) * 12}</td>
+                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.leave_travel_allowance || 0).toFixed(2)}</td>
+                            <td className="p-3 text-right border">₹{((payrollData.currentMonthPayroll?.leave_travel_allowance || 0) * 12).toFixed(2)}</td>
                           </tr>
 
                           <tr className="bg-gray-50">
@@ -391,23 +391,23 @@ const Reports = () => {
                           </tr>
                           <tr>
                             <td className="p-3 border">PF (Employee Contribution)</td>
-                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.pf_employee?.toFixed(2) || 0}</td>
+                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.pf_employee || 0).toFixed(2)}</td>
                             <td className="p-3 text-right border">₹{payrollData.yearlyTotals.pf.toFixed(2)}</td>
                           </tr>
                           <tr>
                             <td className="p-3 border">Professional Tax</td>
-                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.professional_tax?.toFixed(2) || 0}</td>
-                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.professional_tax || 0) * 12}</td>
+                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.professional_tax || 0).toFixed(2)}</td>
+                            <td className="p-3 text-right border">₹{((payrollData.currentMonthPayroll?.professional_tax || 0) * 12).toFixed(2)}</td>
                           </tr>
                           <tr>
                             <td className="p-3 border">TDS Deduction</td>
-                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.tds?.toFixed(2) || 0}</td>
-                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.tds || 0) * 12}</td>
+                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.tds || 0).toFixed(2)}</td>
+                            <td className="p-3 text-right border">₹{((payrollData.currentMonthPayroll?.tds || 0) * 12).toFixed(2)}</td>
                           </tr>
 
                           <tr className="total-row bg-yellow-50 font-bold">
                             <td className="p-3 border">Net Salary</td>
-                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.net_pay?.toFixed(2) || 0}</td>
+                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.net_pay || 0).toFixed(2)}</td>
                             <td className="p-3 text-right border">₹{payrollData.yearlyTotals.net.toFixed(2)}</td>
                           </tr>
                         </tbody>
@@ -502,8 +502,8 @@ const Reports = () => {
                   {employees.map((emp) => (
                     <div key={emp.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div>
-                        <p className="font-medium text-gray-800">{emp.first_name} {emp.last_name}</p>
-                        <p className="text-sm text-gray-500">{emp.loginId}</p>
+                        <p className="font-medium text-gray-800">{emp.firstName || emp.first_name} {emp.lastName || emp.last_name}</p>
+                        <p className="text-sm text-gray-500">{emp.loginId || emp.login_id}</p>
                       </div>
                       <div className={`w-3 h-3 rounded-full ${emp.status === 'present' ? 'bg-green-500' :
                           emp.status === 'absent' ? 'bg-yellow-500' :

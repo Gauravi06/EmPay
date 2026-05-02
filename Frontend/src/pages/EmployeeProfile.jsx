@@ -1,23 +1,36 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useAuthStore } from '../stores/authStore'
+import { useAuthStore, MODULES, PERMISSIONS } from '../stores/authStore'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import { motion } from 'framer-motion'
 import {
   UserCircle, Mail, Phone, Calendar,
   Building, Users, Briefcase, ArrowLeft,
-  MapPin, Hash
+  MapPin, Hash, Edit2, Save, X
 } from 'lucide-react'
+import toast from 'react-hot-toast'
 
-// Read-only field display
-const Field = ({ label, value, icon: Icon }) => (
+// Field display
+const Field = ({ label, value, icon: Icon, isEditing, onChange, type = "text" }) => (
   <div className="flex flex-col gap-1">
     <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{label}</span>
-    <div className="flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2.5">
-      {Icon && <Icon className="w-4 h-4 text-gray-400 flex-shrink-0" />}
-      <span className="text-sm text-gray-700">{value || '—'}</span>
-    </div>
+    {isEditing ? (
+      <div className="flex items-center gap-2 bg-white border-2 border-indigo-100 rounded-lg px-3 py-2 focus-within:border-indigo-500 transition-colors">
+        {Icon && <Icon className="w-4 h-4 text-indigo-400 flex-shrink-0" />}
+        <input 
+          type={type}
+          value={value || ''} 
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full bg-transparent border-none outline-none text-sm text-gray-800"
+        />
+      </div>
+    ) : (
+      <div className="flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2.5">
+        {Icon && <Icon className="w-4 h-4 text-gray-400 flex-shrink-0" />}
+        <span className="text-sm text-gray-700">{value || '—'}</span>
+      </div>
+    )}
   </div>
 )
 
@@ -43,9 +56,11 @@ const StatusBadge = ({ status }) => {
 const EmployeeProfile = () => {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { fetchEmployees } = useAuthStore()
+  const { fetchEmployees, hasPermission, updateEmployee, user } = useAuthStore()
   const [employee, setEmployee] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [isEditing, setIsEditing] = useState(false)
+  const [formData, setFormData] = useState({})
 
   useEffect(() => {
     const load = async () => {
@@ -53,6 +68,15 @@ const EmployeeProfile = () => {
         const emps = await fetchEmployees()
         const emp = emps.find(e => e.id === parseInt(id))
         setEmployee(emp || null)
+        if (emp) {
+          setFormData({
+            email: emp.email || '',
+            phone: emp.phone || '',
+            company_name: emp.company_name || emp.companyName || '',
+            department: emp.department || '',
+            location: emp.location || ''
+          })
+        }
       } catch (e) {
         console.error(e)
       } finally {
@@ -62,12 +86,25 @@ const EmployeeProfile = () => {
     load()
   }, [id])
 
+  const handleSave = async () => {
+    try {
+      await updateEmployee(employee.id, formData)
+      setEmployee({ ...employee, ...formData })
+      setIsEditing(false)
+      toast.success('Profile updated successfully')
+    } catch (e) {
+      toast.error('Failed to update profile')
+    }
+  }
+
+  const canEdit = hasPermission(MODULES.EMPLOYEES, PERMISSIONS.EDIT) || (user && user.id === parseInt(id))
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Sidebar />
         <Header />
-        <main className="ml-64 pt-16 p-6">
+        <main className="pt-16 p-6" style={{ marginLeft: 220 }}>
           <div className="max-w-3xl mx-auto">
             <div className="bg-white rounded-xl shadow-sm p-8 animate-pulse">
               <div className="flex items-center gap-6 mb-6">
@@ -89,7 +126,7 @@ const EmployeeProfile = () => {
       <div className="min-h-screen bg-gray-50">
         <Sidebar />
         <Header />
-        <main className="ml-64 pt-16 p-6">
+        <main className="pt-16 p-6" style={{ marginLeft: 220 }}>
           <div className="text-center py-16">
             <p className="text-gray-500 mb-4">Employee not found</p>
             <button onClick={() => navigate(-1)} className="text-primary-600 hover:text-primary-700 font-medium">
@@ -109,11 +146,11 @@ const EmployeeProfile = () => {
   const roleLabel = (employee.role || '').replace(/_/g, ' ')
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
       <Sidebar />
       <Header />
 
-      <main className="ml-64 pt-16 p-6">
+      <main className="pt-16 p-6" style={{ marginLeft: 220 }}>
         <div className="max-w-3xl mx-auto">
 
           {/* Back button */}
@@ -125,13 +162,34 @@ const EmployeeProfile = () => {
             Back
           </button>
 
-          {/* View-only banner */}
-          <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5 mb-5 text-sm text-blue-700">
-            <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
-            View-only mode — this profile cannot be edited here
+          {/* View-only banner or Edit Controls */}
+          <div className="flex items-center justify-between mb-5">
+            {!canEdit ? (
+              <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5 text-sm text-blue-700 w-full">
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                View-only mode — this profile cannot be edited here
+              </div>
+            ) : (
+              <div className="flex gap-3 w-full justify-end">
+                {isEditing ? (
+                  <>
+                    <button onClick={() => setIsEditing(false)} className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+                      <X className="w-4 h-4" /> Cancel
+                    </button>
+                    <button onClick={handleSave} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium shadow-sm">
+                      <Save className="w-4 h-4" /> Save Changes
+                    </button>
+                  </>
+                ) : (
+                  <button onClick={() => setIsEditing(true)} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium shadow-sm">
+                    <Edit2 className="w-4 h-4" /> Edit Profile
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           <motion.div
@@ -172,8 +230,8 @@ const EmployeeProfile = () => {
                     Personal Information
                   </h3>
                   <div className="space-y-3">
-                    <Field label="Email" value={employee.email} icon={Mail} />
-                    <Field label="Phone" value={employee.phone} icon={Phone} />
+                    <Field label="Email" value={isEditing ? formData.email : employee.email} isEditing={isEditing} onChange={v => setFormData({...formData, email: v})} icon={Mail} />
+                    <Field label="Phone" value={isEditing ? formData.phone : employee.phone} isEditing={isEditing} onChange={v => setFormData({...formData, phone: v})} icon={Phone} />
                     <Field label="Date of Joining" value={joiningDate} icon={Calendar} />
                   </div>
                 </div>
@@ -185,9 +243,9 @@ const EmployeeProfile = () => {
                     Employment Details
                   </h3>
                   <div className="space-y-3">
-                    <Field label="Company" value={employee.company_name || employee.companyName} icon={Building} />
-                    <Field label="Department" value={employee.department} icon={Users} />
-                    <Field label="Location" value={employee.location} icon={MapPin} />
+                    <Field label="Company" value={isEditing ? formData.company_name : (employee.company_name || employee.companyName)} isEditing={isEditing} onChange={v => setFormData({...formData, company_name: v})} icon={Building} />
+                    <Field label="Department" value={isEditing ? formData.department : employee.department} isEditing={isEditing} onChange={v => setFormData({...formData, department: v})} icon={Users} />
+                    <Field label="Location" value={isEditing ? formData.location : employee.location} isEditing={isEditing} onChange={v => setFormData({...formData, location: v})} icon={MapPin} />
                     <Field label="Employee Code" value={loginId} icon={Hash} />
                   </div>
                 </div>

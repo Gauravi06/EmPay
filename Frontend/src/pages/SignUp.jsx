@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
 import { motion } from 'framer-motion'
-import { Eye, EyeOff, Upload } from 'lucide-react'
+import { Eye, EyeOff, Upload, CheckCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const css = `
@@ -30,17 +30,16 @@ const css = `
   .su-sub    { font-size: 14px; color: #6B7280; margin: 0 0 28px; line-height: 1.5; }
 
   /* Logo upload */
-  .su-upload-wrap {
-    width: 100%; margin-bottom: 24px;
-  }
+  .su-upload-wrap { width: 100%; margin-bottom: 24px; }
   .su-upload-label { font-size: 13px; font-weight: 600; color: #6B7280; margin-bottom: 8px; display: block; }
   .su-upload-box {
     width: 100%; padding: 18px 16px;
     background: #EDE9FE; border: 2px dashed #C4B5FD; border-radius: 14px;
     display: flex; align-items: center; justify-content: center; gap: 10px;
-    cursor: pointer; transition: all 0.2s; box-sizing: border-box;
+    cursor: pointer; transition: all 0.2s; box-sizing: border-box; position: relative;
   }
   .su-upload-box:hover { border-color: #7C3AED; background: #DDD6FE; }
+  .su-upload-box.has-preview { padding: 12px; border-style: solid; border-color: #7C3AED; background: #F5F3FF; }
   .su-upload-icon {
     width: 36px; height: 36px; border-radius: 10px;
     background: linear-gradient(135deg, #7C3AED, #6D28D9);
@@ -49,10 +48,19 @@ const css = `
   }
   .su-upload-text { font-size: 14px; font-weight: 600; color: #6D28D9; }
   .su-upload-sub  { font-size: 11px; color: #A78BFA; margin-top: 2px; }
-  .su-upload-preview {
-    width: 100%; height: 80px; object-fit: contain;
-    border-radius: 10px;
+  .su-upload-preview-wrap {
+    display: flex; align-items: center; gap: 14px; width: 100%;
   }
+  .su-upload-preview {
+    width: 72px; height: 72px; object-fit: contain;
+    border-radius: 10px; background: white;
+    box-shadow: 0 2px 8px rgba(109,40,217,0.15);
+    padding: 6px; box-sizing: border-box;
+  }
+  .su-upload-preview-info { flex: 1; }
+  .su-upload-preview-name { font-size: 13px; font-weight: 600; color: #1A1A2E; }
+  .su-upload-preview-change { font-size: 12px; color: #7C3AED; margin-top: 3px; cursor: pointer; font-weight: 500; }
+  .su-upload-check { color: #7C3AED; flex-shrink: 0; }
 
   /* Form */
   .su-form { display: flex; flex-direction: column; gap: 16px; }
@@ -113,6 +121,7 @@ const SignUp = () => {
   const [showPass, setShowPass] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [logoPreview, setLogoPreview] = useState(null)
+  const [logoFileName, setLogoFileName] = useState('')
   const fileRef = useRef(null)
 
   const [form, setForm] = useState({
@@ -120,15 +129,24 @@ const SignUp = () => {
     password: '', confirmPassword: ''
   })
 
-  const set = useCallback((key) => (e) => setForm(f => ({ ...f, [key]: e.target.value })), [])
+  const setField = useCallback((key) => (e) => setForm(f => ({ ...f, [key]: e.target.value })), [])
 
   const handleLogoChange = (e) => {
     const file = e.target.files[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = (ev) => setLogoPreview(ev.target.result)
-      reader.readAsDataURL(file)
+    if (!file) return
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Logo must be under 2MB')
+      return
     }
+    setLogoFileName(file.name)
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const dataUrl = ev.target.result
+      setLogoPreview(dataUrl)
+      // Persist so Login page + Sidebar can read it after signup
+      try { localStorage.setItem('empay_company_logo', dataUrl) } catch { }
+    }
+    reader.readAsDataURL(file)
   }
 
   const handleSubmit = async (e) => {
@@ -142,15 +160,18 @@ const SignUp = () => {
       const nameParts = form.name.trim().split(' ')
       const firstName = nameParts[0] || ''
       const lastName = nameParts.slice(1).join(' ') || ''
-      
+
+      // Also store company name for display on login page
+      try { localStorage.setItem('empay_company_name', form.companyName) } catch { }
+
       const result = await signup({
-        firstName, 
+        firstName,
         lastName,
         email: form.email,
         phone: form.phone,
         password: form.password,
         companyName: form.companyName,
-        role: 'employee'
+        role: 'admin'   // first registrant is always admin
       })
 
       if (result.success) {
@@ -183,12 +204,22 @@ const SignUp = () => {
           <h1 className="su-title">Create Account</h1>
           <p className="su-sub">Register your company to get started.</p>
 
-          {/* App / Web Logo Upload */}
+          {/* Company Logo Upload */}
           <div className="su-upload-wrap">
-            <label className="su-upload-label">App / Web Logo</label>
-            <div className="su-upload-box" onClick={() => fileRef.current?.click()}>
+            <label className="su-upload-label">Company / App Logo</label>
+            <div
+              className={`su-upload-box${logoPreview ? ' has-preview' : ''}`}
+              onClick={() => fileRef.current?.click()}
+            >
               {logoPreview ? (
-                <img src={logoPreview} alt="Logo preview" className="su-upload-preview" />
+                <div className="su-upload-preview-wrap">
+                  <img src={logoPreview} alt="Logo preview" className="su-upload-preview" />
+                  <div className="su-upload-preview-info">
+                    <div className="su-upload-preview-name">{logoFileName}</div>
+                    <div className="su-upload-preview-change">Click to change</div>
+                  </div>
+                  <CheckCircle size={22} className="su-upload-check" />
+                </div>
               ) : (
                 <>
                   <div className="su-upload-icon">
@@ -217,16 +248,16 @@ const SignUp = () => {
               <label className="su-label">Company Name</label>
               <div className="su-input-wrap">
                 <input className="su-input" type="text" placeholder="Acme Inc."
-                  value={form.companyName} onChange={set('companyName')} required />
+                  value={form.companyName} onChange={setField('companyName')} required />
               </div>
             </div>
 
             {/* Name */}
             <div className="su-field">
-              <label className="su-label">Name</label>
+              <label className="su-label">Your Name</label>
               <div className="su-input-wrap">
                 <input className="su-input" type="text" placeholder="Jane Doe"
-                  value={form.name} onChange={set('name')} required />
+                  value={form.name} onChange={setField('name')} required />
               </div>
             </div>
 
@@ -235,7 +266,7 @@ const SignUp = () => {
               <label className="su-label">Email</label>
               <div className="su-input-wrap">
                 <input className="su-input" type="email" placeholder="jane@company.com"
-                  value={form.email} onChange={set('email')} required />
+                  value={form.email} onChange={setField('email')} required />
               </div>
             </div>
 
@@ -244,7 +275,7 @@ const SignUp = () => {
               <label className="su-label">Phone</label>
               <div className="su-input-wrap">
                 <input className="su-input" type="tel" placeholder="+91 98765 43210"
-                  value={form.phone} onChange={set('phone')} />
+                  value={form.phone} onChange={setField('phone')} />
               </div>
             </div>
 
@@ -254,7 +285,7 @@ const SignUp = () => {
               <div className="su-input-wrap">
                 <input className="su-input su-input-pr"
                   type={showPass ? 'text' : 'password'} placeholder="••••••••"
-                  value={form.password} onChange={set('password')} required autoComplete="new-password" />
+                  value={form.password} onChange={setField('password')} required autoComplete="new-password" />
                 <button type="button" className="su-eye" onClick={() => setShowPass(v => !v)} tabIndex={-1}>
                   {showPass ? <EyeOff size={17} /> : <Eye size={17} />}
                 </button>
@@ -267,7 +298,7 @@ const SignUp = () => {
               <div className="su-input-wrap">
                 <input className="su-input su-input-pr"
                   type={showConfirm ? 'text' : 'password'} placeholder="••••••••"
-                  value={form.confirmPassword} onChange={set('confirmPassword')} required autoComplete="new-password" />
+                  value={form.confirmPassword} onChange={setField('confirmPassword')} required autoComplete="new-password" />
                 <button type="button" className="su-eye" onClick={() => setShowConfirm(v => !v)} tabIndex={-1}>
                   {showConfirm ? <EyeOff size={17} /> : <Eye size={17} />}
                 </button>

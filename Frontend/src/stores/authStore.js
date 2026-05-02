@@ -39,39 +39,70 @@ const TIME_OFF_LIMITS = {
   vacation: 20, holiday: 10, unpaid: Infinity
 }
 
+/**
+ * Role permissions matrix — aligned with spec:
+ *
+ * ADMIN          : Full access. No limitations. Can manage roles in settings.
+ * EMPLOYEE       : Time off (apply/view own), own attendance, own performance,
+ *                  employee directory (view only). No payroll / reports / settings.
+ * HR_OFFICER     : Monitor all attendance, manage & allocate leaves.
+ *                  No payroll data, no settings.
+ * PAYROLL_OFFICER: Approve/reject time-off, generate payslips & leave reports,
+ *                  manage payroll, access attendance (view).
+ *                  Cannot create/modify employee data or access settings
+ *                  (except salary-related info — handled inside Payroll page).
+ */
+/**
+ * RBAC Matrix (matches spec exactly):
+ *
+ * ADMIN          : Full CRUD on all modules. Only role that can delete employees,
+ *                  change user roles, and access Settings.
+ * HR_OFFICER     : Create & update employee profiles (no salary/role fields).
+ *                  Monitor ALL attendance. Manage & allocate leaves.
+ *                  NO payroll, NO reports, NO settings.
+ * PAYROLL_OFFICER: View employee directory (read-only, no salary strip on own).
+ *                  View attendance (read-only).
+ *                  Approve/reject time-off. Generate payslips & reports.
+ *                  Manage payroll (salary-related info on employee profiles).
+ *                  NO settings, NO create/delete employees.
+ * EMPLOYEE       : View employee directory (own salary only visible on own profile).
+ *                  View & record own attendance (check-in/out).
+ *                  Apply for time off & view own status.
+ *                  NO payroll, NO reports, NO settings.
+ */
 const rolePermissions = {
   admin: {
-    employees: ['view', 'create', 'edit', 'delete'],
+    employees:  ['view', 'create', 'edit', 'delete'],
     attendance: ['view', 'create', 'edit', 'approve'],
-    time_off: ['view', 'create', 'edit', 'approve'],
-    payroll: ['view', 'create', 'edit'],
-    reports: ['view', 'create'],
-    settings: ['view', 'edit']
+    time_off:   ['view', 'create', 'edit', 'approve'],
+    payroll:    ['view', 'create', 'edit'],
+    reports:    ['view', 'create'],
+    settings:   ['view', 'edit'],
   },
   hr_officer: {
-    employees: ['view', 'create', 'edit'],
-    attendance: ['view', 'edit', 'approve'],
-    time_off: ['view', 'edit', 'approve'],
-    payroll: ['view'],
-    reports: ['view'],
-    settings: []
+    employees:  ['view', 'create', 'edit'],  // create & update profiles, NO delete, NO salary
+    attendance: ['view', 'edit'],             // monitor ALL employees' attendance
+    time_off:   ['view', 'create', 'edit', 'approve'], // manage & allocate leaves
+    payroll:    [],                           // NO payroll access
+    reports:    [],                           // NO reports
+    settings:   [],                           // NO settings
   },
   payroll_officer: {
-    employees: ['view'],
-    attendance: ['view'],
-    time_off: ['view', 'approve'],
-    payroll: ['view', 'create', 'edit'],
-    reports: ['view', 'create'],
-    settings: []
+    employees:  ['view'],                     // read-only directory, can edit salary fields via payroll
+    attendance: ['view'],                     // read-only attendance
+    time_off:   ['view', 'approve'],          // approve/reject only
+    payroll:    ['view', 'create', 'edit'],   // full payroll management + payslips
+    reports:    ['view', 'create'],           // payslip & leave reports
+    settings:   [],                           // NO settings
   },
   employee: {
-    employees: ['view'],
-    attendance: ['view', 'create'],
-    time_off: ['view', 'create'],
-    payroll: [],
-    reports: [],
-    settings: []
-  }
+    employees:  ['view'],                     // view directory, read-only
+    attendance: ['view', 'create'],           // own attendance only
+    time_off:   ['view', 'create'],           // apply & view own requests
+    payroll:    [],                           // NO payroll / salary info
+    reports:    [],                           // NO reports
+    settings:   [],                           // NO settings
+  },
 }
 
 const API_BASE = 'http://localhost:5000/api'
@@ -82,7 +113,6 @@ async function apiFetch(path, options = {}, token = null) {
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers })
   const data = await res.json()
   if (res.status === 401) {
-    // Token is invalid or expired — clear auth state and redirect to login
     useAuthStore.getState().logout()
     window.location.href = '/'
     throw new Error('Session expired. Please log in again.')
@@ -98,11 +128,11 @@ export const useAuthStore = create(
       user: null,
       token: null,
 
-      login: async (loginId, password) => {
+      login: async (loginId, password, role) => {
         try {
           const data = await apiFetch('/auth/login', {
             method: 'POST',
-            body: JSON.stringify({ loginId, password })
+            body: JSON.stringify({ loginId, password, role })
           })
           set({ isAuthenticated: true, user: data.user, token: data.token })
           return { success: true }
@@ -161,8 +191,10 @@ export const useAuthStore = create(
         const data = await apiFetch(`/employees/${id}`, {
           method: 'PUT', body: JSON.stringify(updates)
         }, token)
-        if (user?.id === id) set({ user: data.employee })
-        return data.employee
+        // Backend returns the updated user object directly (not nested)
+        const updated = data.id ? data : data.employee || data
+        if (user?.id === id) set({ user: updated })
+        return updated
       },
 
       deleteEmployee: async (id) => {
@@ -264,12 +296,12 @@ export const useAuthStore = create(
         return data.requests
       },
 
-      submitTimeOff: async (employeeId, startDate, endDate, reason, type) => {
+      submitTimeOff: async (type, startDate, endDate, days, reason) => {
         const { token } = get()
         try {
           const data = await apiFetch('/time-off', {
             method: 'POST',
-            body: JSON.stringify({ employeeId, startDate, endDate, reason, type })
+            body: JSON.stringify({ type, startDate, endDate, days, reason })
           }, token)
           return { success: true, request: data.request }
         } catch (e) {
@@ -307,6 +339,12 @@ export const useAuthStore = create(
       fetchPayrolls: async () => {
         const { token } = get()
         const data = await apiFetch('/payroll', {}, token)
+        return data.payrolls
+      },
+
+      fetchAllPayrolls: async () => {
+        const { token } = get()
+        const data = await apiFetch('/payroll/all', {}, token)
         return data.payrolls
       },
 

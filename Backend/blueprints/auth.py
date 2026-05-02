@@ -13,9 +13,10 @@ def login():
     data = request.json
     login_id = data.get('login_id') or data.get('loginId')
     password = data.get('password')
+    role = data.get('role')
     
-    if not login_id or not password:
-        return jsonify({'error': 'Login ID and Password are required'}), 400
+    if not login_id or not password or not role:
+        return jsonify({'error': 'Login ID, Password and Role are required'}), 400
         
     conn = get_db()
     # Try login_id first
@@ -24,8 +25,15 @@ def login():
     # Backup: try email
     if not user:
         user = conn.execute('SELECT * FROM users WHERE email = ?', (login_id,)).fetchone()
+    
+    if not user:
+        return jsonify({'error': 'Invalid credentials'}), 401
+        
+    # Strict Role Check
+    if user['role'] != role:
+        return jsonify({'error': f"You are not registered as {role.replace('_', ' ').title()}"}), 401
 
-    if user and check_password_hash(user['password_hash'], password):
+    if check_password_hash(user['password_hash'], password):
         token = jwt.encode({
             'user_id': user['id'],
             'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=24)
