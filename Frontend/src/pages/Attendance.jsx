@@ -41,16 +41,22 @@ const nowMinutes = () => {
 
 /* ─── Status dot ─── */
 const StatusDot = ({ status }) => {
-  if (status === 'present') return <span className="w-3 h-3 rounded-full bg-green-500 ring-2 ring-green-200 inline-block" title="Present" />
-  if (status === 'leave') return <Plane className="w-3.5 h-3.5 text-blue-500" title="On Leave" />
-  return <span className="w-3 h-3 rounded-full bg-amber-400 ring-2 ring-amber-100 inline-block" title="Absent" />
+  if (status === 'present') return <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#10B981', boxShadow: '0 0 0 3px #10B98120', display: 'inline-block' }} title="Present" />
+  if (status === 'leave') return <Plane size={13} style={{ color: '#3B82F6' }} title="On Leave" />
+  return <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#F59E0B', boxShadow: '0 0 0 3px #F59E0B20', display: 'inline-block' }} title="Absent" />
 }
 
 /* ─── Avatar ─── */
 const Avatar = ({ first, last, size = 'md' }) => {
-  const sizes = { sm: 'w-8 h-8 text-xs', md: 'w-12 h-12 text-sm', lg: 'w-16 h-16 text-lg' }
+  const s = { sm: 32, md: 44, lg: 56 }[size] || 44
+  const fs = { sm: 11, md: 13, lg: 16 }[size] || 13
   return (
-    <div className={`${sizes[size]} rounded-full bg-gradient-to-br from-primary-400 to-blue-600 flex items-center justify-center text-white font-bold flex-shrink-0`}>
+    <div style={{
+      width: s, height: s, borderRadius: 14,
+      background: 'linear-gradient(135deg, #7C3AED, #3B82F6)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      color: '#fff', fontWeight: 800, fontSize: fs, flexShrink: 0, letterSpacing: '0.5px'
+    }}>
       {first?.[0]}{last?.[0]}
     </div>
   )
@@ -70,57 +76,58 @@ const EmployeeStatusCard = ({ emp, rec, adminDate, onViewHistory }) => {
   const workHrs = rec?.work_hours || 0
 
   const borderColor = {
-    present: 'border-green-200 bg-green-50/40',
-    absent: 'border-gray-200 bg-white',
-    leave: 'border-blue-200 bg-blue-50/40',
-    weekend: 'border-gray-100 bg-gray-50',
-  }[status] || 'border-gray-200 bg-white'
+    present: '#10B98130', absent: '#E5E7EB', leave: '#3B82F630', weekend: '#F1F5F9',
+  }[status] || '#E5E7EB'
+  const bgColor = {
+    present: '#F0FDF4', absent: '#fff', leave: '#EFF6FF', weekend: '#FAFAFA',
+  }[status] || '#fff'
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`rounded-2xl border ${borderColor} p-4 flex flex-col items-center gap-3 relative group hover:shadow-md transition-all duration-200`}
+      style={{
+        borderRadius: 16, border: `1.5px solid ${borderColor}`, background: bgColor,
+        padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
+        position: 'relative', transition: 'box-shadow 0.2s ease'
+      }}
     >
-      <div className="absolute top-3 right-3">
+      <div style={{ position: 'absolute', top: 12, right: 12 }}>
         <StatusDot status={status} />
       </div>
 
       <Avatar first={emp.firstName || emp.first_name} last={emp.lastName || emp.last_name} size="lg" />
 
-      <div className="text-center">
-        <p className="text-sm font-bold text-gray-800 leading-tight">
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: 13, fontWeight: 800, color: '#0F172A' }}>
           {emp.firstName || emp.first_name} {emp.lastName || emp.last_name}
-        </p>
-        <p className="text-xs text-gray-400 mt-0.5">{emp.department || emp.loginId || emp.login_id}</p>
+        </div>
+        <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>{emp.department || emp.loginId || emp.login_id}</div>
       </div>
 
-      <div className="w-full space-y-1 text-xs">
-        <div className="flex justify-between text-gray-500">
+      <div style={{ width: '100%' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#64748B', marginBottom: 4 }}>
           <span>Check In</span>
-          <span className="font-semibold text-gray-700">{rec?.check_in || '—'}</span>
+          <span style={{ fontWeight: 700, color: '#1E293B' }}>{rec?.check_in || '—'}</span>
         </div>
-        <div className="flex justify-between text-gray-500">
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#64748B' }}>
           <span>Check Out</span>
-          <span className="font-semibold text-gray-700">
+          <span style={{ fontWeight: 700, color: '#1E293B' }}>
             {rec?.check_out
               ? rec.check_out
               : rec?.check_in
-                ? <span className="text-blue-500 font-semibold">In progress</span>
+                ? <span style={{ color: '#3B82F6', fontWeight: 700 }}>In progress</span>
                 : '—'}
           </span>
         </div>
         {workHrs > 0 && (
-          <div className="mt-2">
-            <div className="flex justify-between text-gray-400 mb-1">
+          <div style={{ marginTop: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#94A3B8', marginBottom: 3 }}>
               <span>Hours</span>
-              <span className="font-semibold text-gray-600">{fmtHours(workHrs)}</span>
+              <span style={{ fontWeight: 700, color: '#475569' }}>{fmtHours(workHrs)}</span>
             </div>
-            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-primary-400 to-blue-500 rounded-full"
-                style={{ width: `${Math.min((workHrs / 9) * 100, 100)}%` }}
-              />
+            <div style={{ height: 5, background: '#F1F5F9', borderRadius: 10, overflow: 'hidden' }}>
+              <div style={{ height: '100%', background: 'linear-gradient(90deg, #7C3AED, #A78BFA)', borderRadius: 10, width: `${Math.min((workHrs / 9) * 100, 100)}%`, transition: 'width 0.5s ease' }} />
             </div>
           </div>
         )}
@@ -129,9 +136,14 @@ const EmployeeStatusCard = ({ emp, rec, adminDate, onViewHistory }) => {
       {/* View history button */}
       <button
         onClick={() => onViewHistory(emp)}
-        className="w-full mt-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors"
+        style={{
+          width: '100%', padding: '6px 0', fontSize: 12, fontWeight: 700,
+          color: '#7C3AED', background: '#F5F3FF', border: 'none', borderRadius: 10,
+          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+          fontFamily: 'inherit', marginTop: 2
+        }}
       >
-        <History className="w-3.5 h-3.5" /> View History
+        <History size={13} /> View History
       </button>
     </motion.div>
   )
@@ -140,55 +152,65 @@ const EmployeeStatusCard = ({ emp, rec, adminDate, onViewHistory }) => {
 /* ─── Stat card ─── */
 const StatCard = ({ icon: Icon, label, value, sub, color }) => {
   const colors = {
-    blue: { bg: 'bg-blue-50', icon: 'bg-blue-100 text-blue-600', val: 'text-blue-700' },
-    green: { bg: 'bg-green-50', icon: 'bg-green-100 text-green-600', val: 'text-green-700' },
-    amber: { bg: 'bg-amber-50', icon: 'bg-amber-100 text-amber-600', val: 'text-amber-700' },
-    red: { bg: 'bg-red-50', icon: 'bg-red-100 text-red-600', val: 'text-red-700' },
-    purple: { bg: 'bg-purple-50', icon: 'bg-purple-100 text-purple-600', val: 'text-purple-700' },
+    blue: { bg: '#EFF6FF', icon: '#3B82F6', iconBg: '#DBEAFE', val: '#1D4ED8' },
+    green: { bg: '#F0FDF4', icon: '#10B981', iconBg: '#D1FAE5', val: '#059669' },
+    amber: { bg: '#FFFBEB', icon: '#F59E0B', iconBg: '#FEF3C7', val: '#D97706' },
+    red: { bg: '#FEF2F2', icon: '#F43F5E', iconBg: '#FEE2E2', val: '#DC2626' },
+    purple: { bg: '#F5F3FF', icon: '#7C3AED', iconBg: '#EDE9FE', val: '#6D28D9' },
   }
   const c = colors[color] || colors.blue
   return (
-    <div className={`${c.bg} bg-opacity-70 backdrop-blur-md rounded-2xl p-4 flex items-center gap-4 border border-white shadow-sm hover:shadow-md transition-all duration-300`}>
-      <div className={`${c.icon} p-2.5 rounded-lg flex-shrink-0`}>
-        <Icon className="w-5 h-5" />
+    <motion.div whileHover={{ y: -2, boxShadow: '0 6px 20px rgba(0,0,0,0.08)' }}
+      style={{
+        background: c.bg, borderRadius: 16, padding: '14px 16px',
+        display: 'flex', alignItems: 'center', gap: 14,
+        border: '1px solid #EBEBF5', transition: 'all 0.15s ease'
+      }}>
+      <div style={{ width: 40, height: 40, borderRadius: 12, background: c.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <Icon size={18} style={{ color: c.icon }} />
       </div>
       <div>
-        <p className="text-xs text-gray-500 font-medium">{label}</p>
-        <p className={`text-xl font-bold ${c.val}`}>{value}</p>
-        {sub && <p className="text-[11px] text-gray-400 mt-0.5">{sub}</p>}
+        <div style={{ fontSize: 12, color: '#64748B', fontWeight: 600 }}>{label}</div>
+        <div style={{ fontSize: 22, fontWeight: 900, color: c.val, letterSpacing: '-0.5px' }}>{value}</div>
+        {sub && <div style={{ fontSize: 11, color: '#94A3B8', marginTop: 1 }}>{sub}</div>}
       </div>
-    </div>
+    </motion.div>
   )
 }
 
 /* ─── Status badge ─── */
 const StatusBadge = ({ status }) => {
   const map = {
-    Present: 'bg-green-100 text-green-700 border-green-200',
-    Late: 'bg-amber-100 text-amber-700 border-amber-200',
-    Absent: 'bg-red-100 text-red-700 border-red-200',
-    'On Leave': 'bg-blue-100 text-blue-700 border-blue-200',
-    Weekend: 'bg-gray-100 text-gray-500 border-gray-200',
-    'In Progress': 'bg-indigo-100 text-indigo-700 border-indigo-200',
+    Present: { bg: '#D1FAE5', color: '#059669', border: '#A7F3D0' },
+    Late: { bg: '#FEF3C7', color: '#B45309', border: '#FDE68A' },
+    Absent: { bg: '#FEE2E2', color: '#DC2626', border: '#FECACA' },
+    'On Leave': { bg: '#DBEAFE', color: '#1D4ED8', border: '#BFDBFE' },
+    Weekend: { bg: '#F3F4F6', color: '#6B7280', border: '#E5E7EB' },
+    'In Progress': { bg: '#EDE9FE', color: '#6D28D9', border: '#DDD6FE' },
   }
+  const s = map[status] || map.Absent
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border ${map[status] || map.Absent}`}>
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', padding: '2px 10px', borderRadius: 20,
+      fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em',
+      background: s.bg, color: s.color, border: `1px solid ${s.border}`
+    }}>
       {status}
     </span>
   )
 }
 
 /* ─── Progress ring ─── */
-const RingProgress = ({ pct, size = 56, stroke = 5, color = '#2563eb' }) => {
+const RingProgress = ({ pct, size = 56, stroke = 5, color = '#7C3AED' }) => {
   const r = (size - stroke * 2) / 2
   const circ = 2 * Math.PI * r
   const offset = circ - (pct / 100) * circ
   return (
-    <svg width={size} height={size} className="-rotate-90">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#e5e7eb" strokeWidth={stroke} />
+    <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#F1F5F9" strokeWidth={stroke} />
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color}
         strokeWidth={stroke} strokeDasharray={circ} strokeDashoffset={offset}
-        strokeLinecap="round" className="transition-all duration-700" />
+        strokeLinecap="round" style={{ transition: 'stroke-dashoffset 0.7s ease' }} />
     </svg>
   )
 }
@@ -202,9 +224,14 @@ const TimeWindowBanner = ({ now }) => {
   if (!beforeWork && !afterWork) return null
 
   return (
-    <div className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium
-      ${beforeWork ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}>
-      <Clock className="w-4 h-4 flex-shrink-0" />
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 10,
+      padding: '10px 16px', borderRadius: 12, fontSize: 13, fontWeight: 600,
+      background: beforeWork ? '#FFFBEB' : '#F8FAFC',
+      color: beforeWork ? '#B45309' : '#64748B',
+      border: `1px solid ${beforeWork ? '#FDE68A' : '#E5E7EB'}`
+    }}>
+      <Clock size={15} style={{ flexShrink: 0 }} />
       {beforeWork
         ? `Check-in opens at 9:00 AM · Office hours: 9:00 AM – 6:00 PM`
         : `Office hours ended at 6:00 PM · See you tomorrow!`}
@@ -227,77 +254,106 @@ const CheckInOutPanel = ({ onCheckIn, onCheckOut, todayRecord, loading }) => {
   const isCheckedOut = !!todayRecord?.check_out
   const isInProgress = isCheckedIn && !isCheckedOut
 
+  const statusColor = isCheckedOut ? '#94A3B8' : isInProgress ? '#10B981' : '#F59E0B'
+  const statusBg = isCheckedOut ? '#F8FAFC' : isInProgress ? '#F0FDF4' : '#FFFBEB'
+  const statusText = isCheckedOut ? 'Completed for today' : isInProgress ? 'Currently checked in' : 'Not checked in'
+
   return (
-    <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white shadow-sm hover:shadow-md transition-all duration-300 p-6 flex flex-col items-center gap-4">
+    <div style={{
+      background: '#fff', borderRadius: 16, border: '1px solid #EBEBF5',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.06)', padding: 20,
+      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14
+    }}>
       {/* Live clock */}
-      <div className="text-center">
-        <p className="text-3xl font-bold text-gray-800 tabular-nums tracking-tight">
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: 32, fontWeight: 900, color: '#0F172A', letterSpacing: '-1px', fontVariantNumeric: 'tabular-nums' }}>
           {format(now, 'HH:mm:ss')}
-        </p>
-        <p className="text-xs text-gray-400 mt-1">{format(now, 'EEEE, d MMMM yyyy')}</p>
-        <p className="text-xs text-gray-300 mt-0.5">Office hours: 09:00 – 18:00</p>
+        </div>
+        <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 3 }}>{format(now, 'EEEE, d MMMM yyyy')}</div>
+        <div style={{ fontSize: 11, color: '#CBD5E1', marginTop: 2 }}>Office hours: 09:00 – 18:00</div>
       </div>
 
       {/* Status indicator */}
-      <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold
-        ${isCheckedOut ? 'bg-gray-100 text-gray-600' :
-          isInProgress ? 'bg-green-50 text-green-700' :
-            'bg-amber-50 text-amber-700'}`}>
-        <span className={`w-2 h-2 rounded-full ${isCheckedOut ? 'bg-gray-400' : isInProgress ? 'bg-green-500 animate-pulse' : 'bg-amber-500'}`} />
-        {isCheckedOut ? 'Completed for today' : isInProgress ? 'Currently checked in' : 'Not checked in'}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        padding: '6px 16px', borderRadius: 20, fontSize: 13, fontWeight: 700,
+        background: statusBg, color: statusColor
+      }}>
+        <span style={{ width: 7, height: 7, borderRadius: '50%', background: statusColor, display: 'inline-block', ...(isInProgress ? { animation: 'pulse 2s infinite' } : {}) }} />
+        {statusText}
       </div>
 
-      {/* Check in/out times display */}
+      {/* Check in/out times */}
       {isCheckedIn && (
-        <div className="w-full grid grid-cols-2 gap-3 text-center">
-          <div className="bg-green-50 rounded-xl p-3">
-            <p className="text-xs text-gray-500 font-medium">Check In</p>
-            <p className="text-lg font-bold text-green-700 mt-0.5">{todayRecord.check_in}</p>
+        <div style={{ width: '100%', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, textAlign: 'center' }}>
+          <div style={{ background: '#F0FDF4', borderRadius: 12, padding: 10 }}>
+            <div style={{ fontSize: 11, color: '#64748B', fontWeight: 600 }}>Check In</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: '#059669', marginTop: 2 }}>{todayRecord.check_in}</div>
           </div>
-          <div className="bg-blue-50 rounded-xl p-3">
-            <p className="text-xs text-gray-500 font-medium">Check Out</p>
-            <p className="text-lg font-bold text-blue-700 mt-0.5">{todayRecord.check_out || '—'}</p>
+          <div style={{ background: '#F5F3FF', borderRadius: 12, padding: 10 }}>
+            <div style={{ fontSize: 11, color: '#64748B', fontWeight: 600 }}>Check Out</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: '#7C3AED', marginTop: 2 }}>{todayRecord.check_out || '—'}</div>
           </div>
         </div>
       )}
 
       {/* Time window notice */}
       {!withinHours && !isCheckedOut && (
-        <div className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-medium
-          ${mins < WORK_START_MIN ? 'bg-amber-50 text-amber-700 border border-amber-100' : 'bg-gray-50 text-gray-500 border border-gray-100'}`}>
-          <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+        <div style={{
+          width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+          padding: '8px 12px', borderRadius: 10, fontSize: 12, fontWeight: 600,
+          background: mins < WORK_START_MIN ? '#FFFBEB' : '#F8FAFC',
+          color: mins < WORK_START_MIN ? '#B45309' : '#64748B',
+          border: `1px solid ${mins < WORK_START_MIN ? '#FDE68A' : '#E5E7EB'}`
+        }}>
+          <Clock size={13} style={{ flexShrink: 0 }} />
           {mins < WORK_START_MIN ? 'Check-in available from 9:00 AM' : 'Office hours ended at 6:00 PM'}
         </div>
       )}
 
       {/* Action buttons */}
-      <div className="w-full flex gap-3">
+      <div style={{ width: '100%', display: 'flex', gap: 10 }}>
         {!isCheckedIn && (
           <button
-            onClick={onCheckIn}
+            onClick={handleCheckIn}
             disabled={loading || !withinHours}
             title={!withinHours ? (mins < WORK_START_MIN ? 'Check-in opens at 9:00 AM' : 'Office hours have ended') : 'Check in'}
-            className="flex-1 flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-bold text-sm hover:opacity-90 active:scale-[0.98] transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              padding: '12px 0', background: 'linear-gradient(135deg, #10B981, #059669)',
+              color: '#fff', borderRadius: 12, fontWeight: 800, fontSize: 14,
+              border: 'none', cursor: loading || !withinHours ? 'not-allowed' : 'pointer',
+              opacity: loading || !withinHours ? 0.4 : 1, fontFamily: 'inherit',
+              boxShadow: '0 4px 14px rgba(16,185,129,0.25)'
+            }}
           >
-            <LogIn className="w-4 h-4" />
-            Check In
+            <LogIn size={16} /> Check In
           </button>
         )}
         {isInProgress && (
           <button
-            onClick={onCheckOut}
+            onClick={handleCheckOut}
             disabled={loading || !withinHours}
             title={!withinHours ? 'Office hours have ended — auto checkout will apply' : 'Check out'}
-            className="flex-1 flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-primary-600 to-blue-500 text-white rounded-xl font-bold text-sm hover:opacity-90 active:scale-[0.98] transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              padding: '12px 0', background: 'linear-gradient(135deg, #7C3AED, #5B21B6)',
+              color: '#fff', borderRadius: 12, fontWeight: 800, fontSize: 14,
+              border: 'none', cursor: loading || !withinHours ? 'not-allowed' : 'pointer',
+              opacity: loading || !withinHours ? 0.4 : 1, fontFamily: 'inherit',
+              boxShadow: '0 4px 14px rgba(124,58,237,0.25)'
+            }}
           >
-            <LogOut className="w-4 h-4" />
-            Check Out
+            <LogOut size={16} /> Check Out
           </button>
         )}
         {isCheckedOut && (
-          <div className="flex-1 flex items-center justify-center gap-2 py-3 bg-gray-100 text-gray-500 rounded-xl font-semibold text-sm">
-            <CheckCircle2 className="w-4 h-4 text-green-500" />
-            Done for today
+          <div style={{
+            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            padding: '12px 0', background: '#F8FAFC', color: '#64748B', borderRadius: 12,
+            fontWeight: 700, fontSize: 14
+          }}>
+            <CheckCircle2 size={16} style={{ color: '#10B981' }} /> Done for today
           </div>
         )}
       </div>
@@ -315,62 +371,59 @@ const ManualEntryModal = ({ onClose, onSave, userId, employees, isAdminOrHR }) =
     break_time: 60,
   })
   const setF = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const labelStyle = { display: 'block', fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 5 }
+  const fieldStyle = { width: '100%', padding: '9px 14px', borderRadius: 10, border: '1.5px solid #E5E7EB', background: '#F8FAFC', fontSize: 13, fontWeight: 600, color: '#1E293B', fontFamily: 'inherit', outline: 'none' }
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}>
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
-          className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden"
+          style={{ background: '#fff', borderRadius: 16, boxShadow: '0 20px 60px rgba(0,0,0,0.15)', width: '100%', maxWidth: 420, margin: '0 16px', overflow: 'hidden' }}
         >
-          <div className="bg-gradient-to-r from-primary-600 to-blue-500 px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-white">
-              <CalendarDays className="w-5 h-5" />
-              <h2 className="text-base font-bold">Manual Attendance Entry</h2>
+          <div style={{ background: 'linear-gradient(135deg, #7C3AED, #5B21B6)', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#fff' }}>
+              <CalendarDays size={18} />
+              <span style={{ fontSize: 15, fontWeight: 800 }}>Manual Attendance Entry</span>
             </div>
-            <button onClick={onClose} className="text-white/70 hover:text-white text-2xl leading-none">×</button>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', fontSize: 22, cursor: 'pointer', lineHeight: 1 }}>×</button>
           </div>
 
-          <div className="p-6 space-y-4">
+          <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
             {isAdminOrHR && (
               <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Employee</label>
-                <select value={form.employee_id} onChange={e => setF('employee_id', e.target.value)}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-primary-500/30">
+                <label style={labelStyle}>Employee</label>
+                <select value={form.employee_id} onChange={e => setF('employee_id', e.target.value)} style={{ ...fieldStyle, cursor: 'pointer' }}>
                   <option value="">Select employee…</option>
                   {employees.map(e => <option key={e.id} value={e.id}>{e.firstName || e.first_name} {e.lastName || e.last_name}</option>)}
                 </select>
               </div>
             )}
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Date</label>
-              <input type="date" value={form.date} onChange={e => setF('date', e.target.value)}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-primary-500/30" />
+              <label style={labelStyle}>Date</label>
+              <input type="date" value={form.date} onChange={e => setF('date', e.target.value)} style={fieldStyle} />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Check In <span className="text-gray-400 font-normal">(09:00–18:00)</span></label>
-                <input type="time" value={form.check_in} min="09:00" max="18:00" onChange={e => setF('check_in', e.target.value)}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-primary-500/30" />
+                <label style={labelStyle}>Check In <span style={{ color: '#CBD5E1', fontWeight: 400 }}>(09:00–18:00)</span></label>
+                <input type="time" value={form.check_in} min="09:00" max="18:00" onChange={e => setF('check_in', e.target.value)} style={fieldStyle} />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Check Out <span className="text-gray-400 font-normal">(max 18:00)</span></label>
-                <input type="time" value={form.check_out} min={form.check_in || '09:00'} max="18:00" onChange={e => setF('check_out', e.target.value)}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-primary-500/30" />
+                <label style={labelStyle}>Check Out <span style={{ color: '#CBD5E1', fontWeight: 400 }}>(max 18:00)</span></label>
+                <input type="time" value={form.check_out} min={form.check_in || '09:00'} max="18:00" onChange={e => setF('check_out', e.target.value)} style={fieldStyle} />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Break Time (minutes)</label>
-              <input type="number" value={form.break_time} onChange={e => setF('break_time', parseInt(e.target.value) || 0)}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-primary-500/30" />
+              <label style={labelStyle}>Break Time (minutes)</label>
+              <input type="number" value={form.break_time} onChange={e => setF('break_time', parseInt(e.target.value) || 0)} style={fieldStyle} />
             </div>
           </div>
 
-          <div className="flex gap-3 px-6 pb-6">
+          <div style={{ display: 'flex', gap: 10, padding: '0 24px 24px' }}>
             <button onClick={onClose}
-              className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50">
+              style={{ flex: 1, padding: '10px 16px', border: '1.5px solid #E5E7EB', borderRadius: 10, fontSize: 13, fontWeight: 700, color: '#475569', background: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>
               Discard
             </button>
             <button onClick={() => {
@@ -389,7 +442,7 @@ const ManualEntryModal = ({ onClose, onSave, userId, employees, isAdminOrHR }) =
               }
               onSave(form)
             }}
-              className="flex-1 px-4 py-2.5 bg-gradient-to-r from-primary-600 to-blue-500 text-white rounded-xl text-sm font-semibold hover:opacity-90 shadow-sm">
+              style={{ flex: 1, padding: '10px 16px', background: '#7C3AED', color: '#fff', borderRadius: 10, fontSize: 13, fontWeight: 800, border: 'none', cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 14px rgba(124,58,237,0.3)' }}>
               Save Entry
             </button>
           </div>
@@ -439,64 +492,61 @@ const EmployeeHistoryModal = ({ emp, onClose, getMonthlyAttendance }) => {
   }).length
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', padding: 16 }}>
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 12 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden"
+        style={{ background: '#fff', borderRadius: 16, boxShadow: '0 20px 60px rgba(0,0,0,0.15)', width: '100%', maxWidth: 720, maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
       >
-        {/* Header */}
-        <div className="bg-gradient-to-r from-primary-600 to-blue-500 px-6 py-4 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-3">
+        <div style={{ background: 'linear-gradient(135deg, #7C3AED, #5B21B6)', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <Avatar first={emp.firstName || emp.first_name} last={emp.lastName || emp.last_name} size="sm" />
             <div>
-              <h2 className="text-base font-bold text-white">{emp.firstName || emp.first_name} {emp.lastName || emp.last_name}</h2>
-              <p className="text-xs text-white/70">{emp.department || emp.loginId || emp.login_id} · Attendance History</p>
+              <div style={{ fontSize: 15, fontWeight: 800, color: '#fff' }}>{emp.firstName || emp.first_name} {emp.lastName || emp.last_name}</div>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>{emp.department || emp.loginId || emp.login_id} · Attendance History</div>
             </div>
           </div>
-          <button onClick={onClose} className="text-white/70 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors">
-            <X className="w-5 h-5" />
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: 4 }}>
+            <X size={18} />
           </button>
         </div>
 
-        {/* Summary strip */}
-        <div className="flex items-center gap-6 px-6 py-3 bg-gray-50 border-b border-gray-100 flex-shrink-0 flex-wrap gap-y-2">
-          <div className="flex items-center gap-1.5 text-sm">
-            <button onClick={() => setMonth(m => subMonths(m, 1))} className="p-1 rounded hover:bg-gray-200 text-gray-500"><ChevronLeft className="w-4 h-4" /></button>
-            <span className="font-semibold text-gray-700 min-w-[110px] text-center">{format(month, 'MMMM yyyy')}</span>
-            <button onClick={() => setMonth(m => addMonths(m, 1))} className="p-1 rounded hover:bg-gray-200 text-gray-500"><ChevronRight className="w-4 h-4" /></button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20, padding: '10px 24px', background: '#F8FAFC', borderBottom: '1px solid #F1F5F9', flexShrink: 0, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <button onClick={() => setMonth(m => subMonths(m, 1))} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer', color: '#64748B' }}><ChevronLeft size={16} /></button>
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#0F172A', minWidth: 110, textAlign: 'center' }}>{format(month, 'MMMM yyyy')}</span>
+            <button onClick={() => setMonth(m => addMonths(m, 1))} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer', color: '#64748B' }}><ChevronRight size={16} /></button>
           </div>
-          <span className="text-xs text-gray-500"><span className="font-bold text-green-600">{presentDays}</span> days present</span>
-          <span className="text-xs text-gray-500"><span className="font-bold text-amber-600">{lateDays}</span> late</span>
-          <span className="text-xs text-gray-500"><span className="font-bold text-primary-600">{fmtHours(totalHours)}</span> total hours</span>
+          <span style={{ fontSize: 12, color: '#64748B' }}><span style={{ fontWeight: 800, color: '#10B981' }}>{presentDays}</span> days present</span>
+          <span style={{ fontSize: 12, color: '#64748B' }}><span style={{ fontWeight: 800, color: '#F59E0B' }}>{lateDays}</span> late</span>
+          <span style={{ fontSize: 12, color: '#64748B' }}><span style={{ fontWeight: 800, color: '#7C3AED' }}>{fmtHours(totalHours)}</span> total hours</span>
         </div>
 
-        {/* Table */}
-        <div className="overflow-y-auto flex-1">
-          <table className="w-full text-left">
-            <thead className="sticky top-0 z-10">
-              <tr className="bg-gray-50 border-b border-gray-100">
+        <div style={{ overflowY: 'auto', flex: 1 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#F8FAFC', borderBottom: '1.5px solid #F1F5F9', position: 'sticky', top: 0, zIndex: 5 }}>
                 {['Date', 'Check In', 'Check Out', 'Work Hours', 'Overtime', 'Status'].map(h => (
-                  <th key={h} className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                  <th key={h} style={{ padding: '10px 18px', textAlign: 'left', fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody>
               {loading ? (
                 [...Array(8)].map((_, i) => (
                   <tr key={i}>
                     {[...Array(6)].map((_, j) => (
-                      <td key={j} className="px-5 py-4">
-                        <div className="h-4 bg-gray-100 rounded animate-pulse" style={{ width: j === 0 ? '120px' : '70px' }} />
+                      <td key={j} style={{ padding: '14px 18px' }}>
+                        <div style={{ height: 14, background: '#F1F5F9', borderRadius: 6, width: j === 0 ? 120 : 70 }} />
                       </td>
                     ))}
                   </tr>
                 ))
               ) : records.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-16">
-                    <CalendarDays className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-                    <p className="text-gray-400 text-sm">No attendance records for this month</p>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '48px 0' }}>
+                    <CalendarDays size={36} style={{ color: '#D1D5DB', margin: '0 auto 8px' }} />
+                    <div style={{ fontSize: 13, color: '#94A3B8' }}>No attendance records for this month</div>
                   </td>
                 </tr>
               ) : (
@@ -511,49 +561,48 @@ const EmployeeHistoryModal = ({ emp, onClose, getMonthlyAttendance }) => {
                     const weekend = isWeekend(d)
                     return (
                       <tr key={rec.id || rec.date}
-                        className={`transition-colors ${today ? 'bg-primary-50/40' : weekend ? 'bg-gray-50/50' : 'hover:bg-blue-50/20'}`}>
-                        <td className="px-5 py-3.5">
-                          <div className="flex items-center gap-2">
-                            {today && <span className="w-1.5 h-1.5 rounded-full bg-primary-500 flex-shrink-0" />}
+                        style={{ borderBottom: '1px solid #F8FAFC', background: today ? '#F5F3FF' : weekend ? '#FAFAFA' : '#fff', transition: 'background 0.15s' }}>
+                        <td style={{ padding: '12px 18px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            {today && <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#7C3AED', flexShrink: 0 }} />}
                             <div>
-                              <p className="text-sm font-semibold text-gray-800">{format(d, 'dd MMM yyyy')}</p>
-                              <p className="text-xs text-gray-400">{format(d, 'EEEE')}</p>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>{format(d, 'dd MMM yyyy')}</div>
+                              <div style={{ fontSize: 11, color: '#94A3B8' }}>{format(d, 'EEEE')}</div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-5 py-3.5">
+                        <td style={{ padding: '12px 18px' }}>
                           {rec.check_in
-                            ? <span className="flex items-center gap-1.5 text-sm text-gray-700 font-medium">
-                              <CheckCircle2 className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />{rec.check_in}
+                            ? <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: '#1E293B', fontWeight: 600 }}>
+                              <CheckCircle2 size={13} style={{ color: '#10B981', flexShrink: 0 }} />{rec.check_in}
                             </span>
-                            : <span className="text-gray-300">—</span>}
+                            : <span style={{ color: '#D1D5DB' }}>—</span>}
                         </td>
-                        <td className="px-5 py-3.5">
+                        <td style={{ padding: '12px 18px' }}>
                           {rec.check_out
-                            ? <span className="flex items-center gap-1.5 text-sm text-gray-700 font-medium">
-                              <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />{rec.check_out}
+                            ? <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: '#1E293B', fontWeight: 600 }}>
+                              <CheckCircle2 size={13} style={{ color: '#3B82F6', flexShrink: 0 }} />{rec.check_out}
                             </span>
                             : rec.check_in
-                              ? <span className="flex items-center gap-1 text-blue-500 text-xs font-semibold"><Timer className="w-3 h-3" /> Pending</span>
-                              : <span className="text-gray-300">—</span>}
+                              ? <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#3B82F6', fontSize: 12, fontWeight: 700 }}><Timer size={12} /> Pending</span>
+                              : <span style={{ color: '#D1D5DB' }}>—</span>}
                         </td>
-                        <td className="px-5 py-3.5">
-                          <span className="text-sm text-gray-700 font-medium">{fmtHours(workHrs)}</span>
+                        <td style={{ padding: '12px 18px' }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: '#1E293B' }}>{fmtHours(workHrs)}</span>
                           {workHrs > 0 && (
-                            <div className="mt-1 h-1 w-14 bg-gray-100 rounded-full overflow-hidden">
-                              <div className="h-full bg-gradient-to-r from-primary-400 to-primary-600 rounded-full"
-                                style={{ width: `${Math.min((workHrs / 9) * 100, 100)}%` }} />
+                            <div style={{ marginTop: 4, height: 4, width: 48, background: '#F1F5F9', borderRadius: 10, overflow: 'hidden' }}>
+                              <div style={{ height: '100%', background: 'linear-gradient(90deg, #7C3AED, #A78BFA)', borderRadius: 10, width: `${Math.min((workHrs / 9) * 100, 100)}%` }} />
                             </div>
                           )}
                         </td>
-                        <td className="px-5 py-3.5 text-sm">
+                        <td style={{ padding: '12px 18px', fontSize: 13 }}>
                           {extraHrs > 0
-                            ? <span className="flex items-center gap-1 text-green-600 font-semibold text-xs">
-                              <TrendingUp className="w-3 h-3" />+{fmtHours(extraHrs)}
+                            ? <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#10B981', fontWeight: 700, fontSize: 12 }}>
+                              <TrendingUp size={12} />+{fmtHours(extraHrs)}
                             </span>
-                            : <span className="text-gray-300">—</span>}
+                            : <span style={{ color: '#D1D5DB' }}>—</span>}
                         </td>
-                        <td className="px-5 py-3.5"><StatusBadge status={status} /></td>
+                        <td style={{ padding: '12px 18px' }}><StatusBadge status={status} /></td>
                       </tr>
                     )
                   })
@@ -566,9 +615,7 @@ const EmployeeHistoryModal = ({ emp, onClose, getMonthlyAttendance }) => {
   )
 }
 
-/* ═══════════════════════════════════════════
-   MAIN COMPONENT
-═══════════════════════════════════════════ */
+/* ─── MAIN COMPONENT ─── */
 const Attendance = () => {
   const {
     user, markAttendance, checkIn, checkOut, autoCheckOut,
@@ -738,47 +785,48 @@ const Attendance = () => {
   }).length
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#F4F6FB', fontFamily: "'DM Sans', sans-serif" }}>
       <Sidebar />
-      <Header />
+      <div style={{ flex: 1, marginLeft: 220 }}>
+        <Header />
 
-      {/* HR Employee History Modal */}
-      {historyEmp && (
-        <EmployeeHistoryModal
-          emp={historyEmp}
-          onClose={() => setHistoryEmp(null)}
-          getMonthlyAttendance={getMonthlyAttendance}
-        />
-      )}
+        {/* HR Employee History Modal */}
+        {historyEmp && (
+          <EmployeeHistoryModal
+            emp={historyEmp}
+            onClose={() => setHistoryEmp(null)}
+            getMonthlyAttendance={getMonthlyAttendance}
+          />
+        )}
 
-      <main className="pt-16 min-h-screen" style={{ marginLeft: 220 }}>
-        {/* ── Top bar ── */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-gray-800">Attendance</h1>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {isAdminOrHR
-                ? `Today · ${format(new Date(), 'EEEE, d MMMM yyyy')} · Office hours: 09:00 – 18:00`
-                : `${format(empMonth, 'MMMM yyyy')} overview`}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
-              <Download className="w-4 h-4" /> Export
-            </button>
-            {(isAdminOrHR) && (
-              <button
-                onClick={() => setShowManual(true)}
-                className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-white bg-gradient-to-r from-primary-600 to-blue-500 rounded-xl hover:opacity-90 transition-opacity shadow-sm"
-              >
-                <Plus className="w-4 h-4" /> Manual Entry
+        <main style={{ padding: '84px 28px 40px' }}>
+          {/* ── Top bar ── */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <h1 style={{ fontSize: 32, fontWeight: 900, color: '#0F172A', margin: 0, letterSpacing: '-1px' }}>Attendance</h1>
+              <p style={{ margin: '6px 0 0', color: '#64748B', fontSize: 14, fontWeight: 500 }}>
+                {isAdminOrHR
+                  ? `Today · ${format(new Date(), 'EEEE, d MMMM yyyy')} · Office hours: 09:00 – 18:00`
+                  : `${format(empMonth, 'MMMM yyyy')} overview`}
+              </p>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', fontSize: 13, fontWeight: 700, color: '#475569', background: '#fff', border: '1.5px solid #E5E7EB', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit' }}>
+                <Download size={15} /> Export
               </button>
-            )}
+              {(isAdminOrHR) && (
+                <motion.button
+                  whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                  onClick={() => setShowManual(true)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', fontSize: 13, fontWeight: 800, color: '#fff', background: '#7C3AED', border: 'none', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 14px rgba(124,58,237,0.3)' }}
+                >
+                  <Plus size={15} /> Manual Entry
+                </motion.button>
+              )}
+            </div>
           </div>
-        </div>
 
-        <div className="p-6 space-y-6">
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
             {/* ════════════════════════
                 ADMIN / HR VIEW
@@ -786,7 +834,7 @@ const Attendance = () => {
             {isAdminOrHR && (
               <>
                 {/* Stat cards */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
                   <StatCard icon={Users} label="Total Employees" value={employees.length} color="blue" />
                   <StatCard icon={UserCheck} label="Present Today" value={presentCount} color="green"
                     sub={`${employees.length > 0 ? Math.round(presentCount / employees.length * 100) : 0}% attendance`} />
@@ -797,73 +845,79 @@ const Attendance = () => {
                 </div>
 
                 {/* Legend */}
-                <div className="flex items-center gap-4 text-xs text-gray-500">
-                  <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-green-500 ring-2 ring-green-200 inline-block" /> Present</span>
-                  <span className="flex items-center gap-1.5"><Plane className="w-3.5 h-3.5 text-blue-500" /> On Leave</span>
-                  <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-amber-400 ring-2 ring-amber-100 inline-block" /> Absent</span>
-                  <span className="flex items-center gap-1.5 ml-2 text-gray-400 italic">Click "View History" on any card to see monthly records</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12, color: '#64748B' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981', display: 'inline-block', boxShadow: '0 0 0 2px #10B98120' }} /> Present</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Plane size={13} style={{ color: '#3B82F6' }} /> On Leave</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#F59E0B', display: 'inline-block', boxShadow: '0 0 0 2px #F59E0B20' }} /> Absent</span>
+                  <span style={{ marginLeft: 8, fontStyle: 'italic', color: '#94A3B8' }}>Click "View History" on any card to see monthly records</span>
                 </div>
 
                 {/* Toolbar */}
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-                  <div className="flex items-center gap-3 px-5 py-3.5 border-b border-gray-100 flex-wrap gap-y-2">
+                <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #EBEBF5', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', borderBottom: '1px solid #F1F5F9', flexWrap: 'wrap' }}>
                     {/* Date nav */}
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => setAdminDate(d => subDays(d, 1))}
-                        className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-500">
-                        <ChevronLeft className="w-4 h-4" />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <button onClick={() => setAdminDate(d => subDays(d, 1))} style={{ padding: 6, border: '1.5px solid #E5E7EB', borderRadius: 8, background: '#fff', cursor: 'pointer', color: '#64748B', display: 'flex' }}>
+                        <ChevronLeft size={15} />
                       </button>
                       <input type="date" value={format(adminDate, 'yyyy-MM-dd')}
                         onChange={e => e.target.value && setAdminDate(new Date(e.target.value + 'T00:00:00'))}
-                        className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 bg-white outline-none focus:ring-2 focus:ring-primary-500/20" />
-                      <button onClick={() => setAdminDate(d => addDays(d, 1))}
-                        className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-500">
-                        <ChevronRight className="w-4 h-4" />
+                        style={{ padding: '5px 12px', border: '1.5px solid #E5E7EB', borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#1E293B', background: '#fff', outline: 'none', fontFamily: 'inherit' }} />
+                      <button onClick={() => setAdminDate(d => addDays(d, 1))} style={{ padding: 6, border: '1.5px solid #E5E7EB', borderRadius: 8, background: '#fff', cursor: 'pointer', color: '#64748B', display: 'flex' }}>
+                        <ChevronRight size={15} />
                       </button>
                     </div>
 
-                    <span className={`px-3 py-1.5 text-sm font-semibold rounded-lg border
-                      ${isToday(adminDate) ? 'bg-primary-50 text-primary-600 border-primary-200' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                    <span style={{
+                      padding: '5px 12px', fontSize: 13, fontWeight: 700, borderRadius: 8,
+                      background: isToday(adminDate) ? '#F5F3FF' : '#F8FAFC',
+                      color: isToday(adminDate) ? '#7C3AED' : '#475569',
+                      border: `1px solid ${isToday(adminDate) ? '#DDD6FE' : '#E5E7EB'}`
+                    }}>
                       {isToday(adminDate) ? 'Today · ' : ''}{format(adminDate, 'EEEE, d MMM')}
                     </span>
 
                     {/* View toggle */}
-                    <div className="flex items-center gap-1 border border-gray-200 rounded-xl p-1 bg-gray-50">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 2, border: '1.5px solid #E5E7EB', borderRadius: 10, padding: 3, background: '#F8FAFC' }}>
                       {[['cards', 'Cards'], ['table', 'Table']].map(([v, l]) => (
                         <button key={v} onClick={() => setViewMode(v)}
-                          className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all
-                            ${viewMode === v ? 'bg-white text-primary-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                          style={{
+                            padding: '4px 12px', fontSize: 12, fontWeight: 700, borderRadius: 8, border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                            background: viewMode === v ? '#fff' : 'transparent',
+                            color: viewMode === v ? '#7C3AED' : '#64748B',
+                            boxShadow: viewMode === v ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'
+                          }}>
                           {l}
                         </button>
                       ))}
                     </div>
 
-                    <div className="flex-1" />
+                    <div style={{ flex: 1 }} />
 
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-3.5 h-3.5" />
+                    <div style={{ position: 'relative' }}>
+                      <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
                       <input type="text" placeholder="Search employee…" value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
-                        className="pl-8 pr-3 py-1.5 border border-gray-200 rounded-xl text-sm bg-gray-50 w-52 outline-none focus:ring-2 focus:ring-primary-500/20" />
+                        style={{ paddingLeft: 32, paddingRight: 12, paddingTop: 6, paddingBottom: 6, border: '1.5px solid #E5E7EB', borderRadius: 10, fontSize: 13, background: '#F8FAFC', width: 200, outline: 'none', fontFamily: 'inherit' }} />
                     </div>
                   </div>
 
                   {/* ── CARDS view ── */}
                   {viewMode === 'cards' && (
-                    <div className="p-5">
+                    <div style={{ padding: 18 }}>
                       {loading ? (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14 }}>
                           {[...Array(8)].map((_, i) => (
-                            <div key={i} className="rounded-2xl border border-gray-100 bg-gray-50 p-4 h-64 animate-pulse" />
+                            <div key={i} style={{ borderRadius: 16, border: '1px solid #F1F5F9', background: '#F8FAFC', padding: 16, height: 220 }} />
                           ))}
                         </div>
                       ) : filteredEmployees.length === 0 ? (
-                        <div className="text-center py-16">
-                          <AlertCircle className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-                          <p className="text-gray-400 text-sm">No employees found</p>
+                        <div style={{ textAlign: 'center', padding: '48px 0' }}>
+                          <AlertCircle size={36} style={{ color: '#D1D5DB', margin: '0 auto 8px' }} />
+                          <div style={{ fontSize: 13, color: '#94A3B8' }}>No employees found</div>
                         </div>
                       ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14 }}>
                           {filteredEmployees.map((emp, i) => {
                             const rec = allAttendance.find(a => a.id === emp.id || a.employee_id === emp.id)
                             return (
@@ -889,22 +943,22 @@ const Attendance = () => {
 
                   {/* ── TABLE view ── */}
                   {viewMode === 'table' && (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left">
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
-                          <tr className="bg-gray-50 border-b border-gray-100">
+                          <tr style={{ background: '#F8FAFC', borderBottom: '1.5px solid #F1F5F9' }}>
                             {['Employee', 'Check In', 'Check Out', 'Work Hours', 'Extra Hours', 'Status', ''].map(h => (
-                              <th key={h} className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                              <th key={h} style={{ padding: '10px 18px', textAlign: 'left', fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>{h}</th>
                             ))}
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50">
+                        <tbody>
                           {loading ? (
                             [...Array(5)].map((_, i) => (
                               <tr key={i}>
                                 {[...Array(7)].map((_, j) => (
-                                  <td key={j} className="px-5 py-4">
-                                    <div className="h-4 bg-gray-100 rounded animate-pulse" style={{ width: j === 0 ? '140px' : '70px' }} />
+                                  <td key={j} style={{ padding: '14px 18px' }}>
+                                    <div style={{ height: 14, background: '#F1F5F9', borderRadius: 6, width: j === 0 ? 140 : 70 }} />
                                   </td>
                                 ))}
                               </tr>
@@ -915,43 +969,42 @@ const Attendance = () => {
                             const extraHrs = Math.max(0, workHrs - 9)
                             const status = resolveStatus(rec ? { ...rec, date: format(adminDate, 'yyyy-MM-dd') } : null)
                             return (
-                              <tr key={emp.id} className="hover:bg-blue-50/30 transition-colors">
-                                <td className="px-5 py-4">
-                                  <div className="flex items-center gap-3">
+                              <tr key={emp.id} style={{ borderBottom: '1px solid #F8FAFC', transition: 'background 0.15s' }}>
+                                <td style={{ padding: '12px 18px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                     <Avatar first={emp.firstName || emp.first_name} last={emp.lastName || emp.last_name} size="sm" />
                                     <div>
-                                      <p className="text-sm font-semibold text-gray-800">{emp.firstName || emp.first_name} {emp.lastName || emp.last_name}</p>
-                                      <p className="text-xs text-gray-400">{emp.department || emp.loginId || emp.login_id}</p>
+                                      <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>{emp.firstName || emp.first_name} {emp.lastName || emp.last_name}</div>
+                                      <div style={{ fontSize: 11, color: '#94A3B8' }}>{emp.department || emp.loginId || emp.login_id}</div>
                                     </div>
                                   </div>
                                 </td>
-                                <td className="px-5 py-4">
+                                <td style={{ padding: '12px 18px' }}>
                                   {rec?.check_in
-                                    ? <span className="flex items-center gap-1.5 text-sm text-gray-700"><CheckCircle2 className="w-3.5 h-3.5 text-green-500" />{rec.check_in}</span>
-                                    : <span className="text-gray-300">—</span>}
+                                    ? <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: '#1E293B' }}><CheckCircle2 size={13} style={{ color: '#10B981' }} />{rec.check_in}</span>
+                                    : <span style={{ color: '#D1D5DB' }}>—</span>}
                                 </td>
-                                <td className="px-5 py-4">
+                                <td style={{ padding: '12px 18px' }}>
                                   {rec?.check_out
-                                    ? <span className="flex items-center gap-1.5 text-sm text-gray-700"><CheckCircle2 className="w-3.5 h-3.5 text-blue-500" />{rec.check_out}</span>
+                                    ? <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: '#1E293B' }}><CheckCircle2 size={13} style={{ color: '#3B82F6' }} />{rec.check_out}</span>
                                     : rec?.check_in
-                                      ? <span className="flex items-center gap-1 text-blue-500 text-xs font-semibold"><Timer className="w-3 h-3" /> In progress</span>
-                                      : <span className="text-gray-300">—</span>}
+                                      ? <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#3B82F6', fontSize: 12, fontWeight: 700 }}><Timer size={12} /> In progress</span>
+                                      : <span style={{ color: '#D1D5DB' }}>—</span>}
                                 </td>
-                                <td className="px-5 py-4 text-sm text-gray-700 font-medium">
-                                  {rec?.check_in ? fmtHours(workHrs) : <span className="text-gray-300">—</span>}
+                                <td style={{ padding: '12px 18px', fontSize: 13, fontWeight: 600, color: '#1E293B' }}>
+                                  {rec?.check_in ? fmtHours(workHrs) : <span style={{ color: '#D1D5DB' }}>—</span>}
                                 </td>
-                                <td className="px-5 py-4 text-sm">
-                                  {extraHrs > 0
-                                    ? <span className="flex items-center gap-1 text-green-600 font-semibold"><TrendingUp className="w-3.5 h-3.5" />{fmtHours(extraHrs)}</span>
-                                    : <span className="text-gray-300">—</span>}
+                                <td style={{ padding: '12px 18px', fontSize: 13 }}>
+                                  {extraHrs > 0 ? <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#10B981', fontWeight: 700 }}><TrendingUp size={13} />{fmtHours(extraHrs)}</span>
+                                    : <span style={{ color: '#D1D5DB' }}>—</span>}
                                 </td>
-                                <td className="px-5 py-4"><StatusBadge status={status} /></td>
-                                <td className="px-5 py-4">
+                                <td style={{ padding: '12px 18px' }}><StatusBadge status={status} /></td>
+                                <td style={{ padding: '12px 18px' }}>
                                   <button
                                     onClick={() => setHistoryEmp(emp)}
-                                    className="flex items-center gap-1 text-xs font-semibold text-primary-600 hover:text-primary-800 bg-primary-50 hover:bg-primary-100 px-2.5 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+                                    style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 700, color: '#7C3AED', background: '#F5F3FF', border: 'none', padding: '5px 10px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
                                   >
-                                    <History className="w-3.5 h-3.5" /> History
+                                    <History size={13} /> History
                                   </button>
                                 </td>
                               </tr>
@@ -963,17 +1016,16 @@ const Attendance = () => {
                   )}
 
                   {!loading && (
-                    <div className="px-5 py-3 bg-gray-50 border-t border-gray-100 flex items-center gap-6">
-                      <span className="text-xs text-gray-500">Present: <span className="font-bold text-green-600">{presentCount}</span></span>
-                      <span className="text-xs text-gray-500">Absent: <span className="font-bold text-red-500">{absentCount}</span></span>
-                      <span className="text-xs text-gray-500">Total: <span className="font-bold text-gray-700">{filteredEmployees.length}</span></span>
-                      <div className="flex-1" />
-                      <div className="flex items-center gap-2">
-                        <div className="h-1.5 w-32 bg-gray-200 rounded-full overflow-hidden">
-                          <div className="h-full bg-gradient-to-r from-green-400 to-green-600 rounded-full transition-all duration-700"
-                            style={{ width: `${employees.length > 0 ? (presentCount / employees.length) * 100 : 0}%` }} />
+                    <div style={{ padding: '10px 18px', background: '#F8FAFC', borderTop: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', gap: 20 }}>
+                      <span style={{ fontSize: 12, color: '#64748B' }}>Present: <span style={{ fontWeight: 800, color: '#10B981' }}>{presentCount}</span></span>
+                      <span style={{ fontSize: 12, color: '#64748B' }}>Absent: <span style={{ fontWeight: 800, color: '#F43F5E' }}>{absentCount}</span></span>
+                      <span style={{ fontSize: 12, color: '#64748B' }}>Total: <span style={{ fontWeight: 800, color: '#0F172A' }}>{filteredEmployees.length}</span></span>
+                      <div style={{ flex: 1 }} />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ height: 5, width: 120, background: '#E5E7EB', borderRadius: 10, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', background: 'linear-gradient(90deg, #10B981, #059669)', borderRadius: 10, transition: 'width 0.7s', width: `${employees.length > 0 ? (presentCount / employees.length) * 100 : 0}%` }} />
                         </div>
-                        <span className="text-xs font-semibold text-gray-600">
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>
                           {employees.length > 0 ? Math.round(presentCount / employees.length * 100) : 0}%
                         </span>
                       </div>
@@ -988,52 +1040,52 @@ const Attendance = () => {
             ════════════════════════ */}
             {isPayroll && !isAdminOrHR && (
               <>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
                   <StatCard icon={Users} label="Total Employees" value={employees.length} color="blue" />
                   <StatCard icon={UserCheck} label="Present Today" value={presentCount} color="green" />
                   <StatCard icon={XCircle} label="Absent Today" value={absentCount} color="red" />
                   <StatCard icon={TrendingUp} label="On Time"
                     value={`${presentCount > 0 ? Math.round(onTimeCount / presentCount * 100) : 0}%`} color="purple" />
                 </div>
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-                  <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between">
-                    <h2 className="text-sm font-bold text-gray-700">Today's Attendance — {format(new Date(), 'EEEE, d MMMM yyyy')}</h2>
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-3.5 h-3.5" />
+                <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #EBEBF5', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                  <div style={{ padding: '12px 18px', borderBottom: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A' }}>Today's Attendance — {format(new Date(), 'EEEE, d MMMM yyyy')}</span>
+                    <div style={{ position: 'relative' }}>
+                      <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
                       <input type="text" placeholder="Search…" value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
-                        className="pl-8 pr-3 py-1.5 border border-gray-200 rounded-xl text-sm bg-gray-50 w-48 outline-none" />
+                        style={{ paddingLeft: 32, paddingRight: 12, paddingTop: 6, paddingBottom: 6, border: '1.5px solid #E5E7EB', borderRadius: 10, fontSize: 13, background: '#F8FAFC', width: 180, outline: 'none', fontFamily: 'inherit' }} />
                     </div>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left">
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
-                        <tr className="bg-gray-50 border-b border-gray-100">
+                        <tr style={{ background: '#F8FAFC', borderBottom: '1.5px solid #F1F5F9' }}>
                           {['Employee', 'Check In', 'Check Out', 'Work Hours', 'Status'].map(h => (
-                            <th key={h} className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
+                            <th key={h} style={{ padding: '10px 18px', textAlign: 'left', fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-50">
+                      <tbody>
                         {filteredEmployees.map(emp => {
                           const rec = allAttendance.find(a => a.id === emp.id || a.employee_id === emp.id)
                           const status = resolveStatus(rec ? { ...rec, date: format(new Date(), 'yyyy-MM-dd') } : null)
                           return (
-                            <tr key={emp.id} className="hover:bg-blue-50/20 transition-colors">
-                              <td className="px-5 py-4">
-                                <div className="flex items-center gap-3">
+                            <tr key={emp.id} style={{ borderBottom: '1px solid #F8FAFC' }}>
+                              <td style={{ padding: '12px 18px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                   <Avatar first={emp.firstName || emp.first_name} last={emp.lastName || emp.last_name} size="sm" />
-                                  <p className="text-sm font-semibold text-gray-800">{emp.firstName || emp.first_name} {emp.lastName || emp.last_name}</p>
+                                  <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>{emp.firstName || emp.first_name} {emp.lastName || emp.last_name}</div>
                                 </div>
                               </td>
-                              <td className="px-5 py-4 text-sm text-gray-700">{rec?.check_in || <span className="text-gray-300">—</span>}</td>
-                              <td className="px-5 py-4 text-sm text-gray-700">
+                              <td style={{ padding: '12px 18px', fontSize: 13, color: '#1E293B' }}>{rec?.check_in || <span style={{ color: '#D1D5DB' }}>—</span>}</td>
+                              <td style={{ padding: '12px 18px', fontSize: 13, color: '#1E293B' }}>
                                 {rec?.check_out || (rec?.check_in
-                                  ? <span className="text-blue-500 text-xs font-semibold">In progress</span>
-                                  : <span className="text-gray-300">—</span>)}
+                                  ? <span style={{ color: '#3B82F6', fontSize: 12, fontWeight: 700 }}>In progress</span>
+                                  : <span style={{ color: '#D1D5DB' }}>—</span>)}
                               </td>
-                              <td className="px-5 py-4 text-sm text-gray-700 font-medium">{fmtHours(rec?.work_hours || 0)}</td>
-                              <td className="px-5 py-4"><StatusBadge status={status} /></td>
+                              <td style={{ padding: '12px 18px', fontSize: 13, fontWeight: 600, color: '#1E293B' }}>{fmtHours(rec?.work_hours || 0)}</td>
+                              <td style={{ padding: '12px 18px' }}><StatusBadge status={status} /></td>
                             </tr>
                           )
                         })}
@@ -1047,194 +1099,142 @@ const Attendance = () => {
             {/* ════════════════════════
                 EMPLOYEE VIEW
             ════════════════════════ */}
-            {!isAdminOrHR && !isPayroll && (
-              <>
-                {/* Time window banner */}
-                <TimeWindowBanner now={new Date()} />
+            {!isAdminOrHR && !isPayroll && (() => {
+              const calDays = eachDayOfInterval({ start: startOfMonth(empMonth), end: endOfMonth(empMonth) })
+              const firstDow = startOfMonth(empMonth).getDay()
+              const workHrsToday = todayRecord?.work_hours || 0
+              return (
+                <>
+                  <TimeWindowBanner now={new Date()} />
 
-                {/* Top row: Check-in panel + Stat cards */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  <CheckInOutPanel
-                    onCheckIn={handleCheckIn}
-                    onCheckOut={handleCheckOut}
-                    todayRecord={todayRecord}
-                    loading={actionLoading}
-                  />
+                  {/* Row 1: Quick Check-in + Currently In Office status */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+                    {/* Quick Check-in */}
+                    <CheckInOutPanel onCheckIn={handleCheckIn} onCheckOut={handleCheckOut} todayRecord={todayRecord} loading={actionLoading} />
 
-                  <div className="lg:col-span-2 grid grid-cols-2 gap-4 content-start">
-                    <div className="col-span-2 bg-white rounded-2xl border border-gray-200 shadow-sm p-4 flex items-center gap-5">
-                      <div className="relative flex-shrink-0">
-                        <RingProgress pct={attendanceRate} size={72} stroke={6} color="#2563eb" />
-                        <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-primary-600">
-                          {attendanceRate}%
-                        </span>
-                      </div>
+                    {/* Currently In Office card */}
+                    <div style={{ background: 'linear-gradient(135deg, #7C3AED, #5B21B6)', borderRadius: 16, padding: 20, color: '#fff', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                       <div>
-                        <p className="text-sm font-bold text-gray-700">Attendance Rate</p>
-                        <p className="text-xs text-gray-400 mt-0.5">{format(empMonth, 'MMMM yyyy')}</p>
-                        <div className="flex items-center gap-3 mt-2 flex-wrap">
-                          <span className="text-xs text-gray-500"><span className="font-bold text-green-600">{presentDays}</span> present</span>
-                          <span className="text-xs text-gray-500"><span className="font-bold text-amber-600">{lateDays}</span> late</span>
-                          <span className="text-xs text-gray-500"><span className="font-bold text-blue-600">{leaveCount}</span> leaves</span>
-                        </div>
+                        <span style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.18)', fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>
+                          {todayRecord?.check_in && !todayRecord?.check_out ? 'Currently In Office' : todayRecord?.check_out ? 'Day Complete' : 'Not Checked In'}
+                        </span>
+                        <div style={{ fontSize: 32, fontWeight: 900, letterSpacing: '-1px' }}>{fmtHours(workHrsToday)}</div>
+                        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', marginTop: 2 }}>Total logged time today</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 16, marginTop: 14 }}>
+                        <div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>In Time</div><div style={{ fontSize: 16, fontWeight: 800 }}>{todayRecord?.check_in || '--:--'}</div></div>
+                        <div><div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Out Time</div><div style={{ fontSize: 16, fontWeight: 800 }}>{todayRecord?.check_out || '--:--'}</div></div>
                       </div>
                     </div>
 
-                    <StatCard icon={CheckCircle2} label="Days Present" value={presentDays} color="green" sub={`of ${totalWorkDays} working days`} />
-                    <StatCard icon={TrendingUp} label="Total Hours" value={fmtHours(totalHours)} color="purple" sub="logged this month" />
-                    <StatCard icon={Clock} label="Leave Taken" value={leaveCount} color="blue" sub="this month" />
-                    <StatCard icon={AlertCircle} label="Late Arrivals" value={lateDays} color="amber" sub="after 9:05 AM" />
-                  </div>
-                </div>
-
-                {/* Monthly history table */}
-                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-                  <div className="flex items-center gap-3 px-5 py-3.5 border-b border-gray-100 flex-wrap gap-y-2">
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => setEmpMonth(m => subMonths(m, 1))}
-                        className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-500">
-                        <ChevronLeft className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => setEmpMonth(m => addMonths(m, 1))}
-                        className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-500">
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
+                    {/* Attendance Rate ring */}
+                    <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #EBEBF5', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', padding: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ position: 'relative' }}>
+                        <RingProgress pct={attendanceRate} size={90} stroke={7} color="#7C3AED" />
+                        <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 900, color: '#7C3AED' }}>{attendanceRate}%</span>
+                      </div>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: '#0F172A', marginTop: 10 }}>Attendance Rate</div>
+                      <div style={{ fontSize: 12, color: '#94A3B8' }}>{format(empMonth, 'MMMM yyyy')}</div>
                     </div>
-                    <select value={empMonth.getMonth()} onChange={e => setEmpMonth(new Date(empMonth.getFullYear(), parseInt(e.target.value), 1))}
-                      className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 bg-white outline-none focus:ring-2 focus:ring-primary-500/20">
-                      {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
-                    </select>
-                    <select value={empYear} onChange={e => setEmpMonth(new Date(parseInt(e.target.value), empMonth.getMonth(), 1))}
-                      className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 bg-white outline-none focus:ring-2 focus:ring-primary-500/20">
-                      {[2023, 2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
-                    </select>
+                  </div>
 
-                    <div className="flex-1" />
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {[
-                        { label: 'Present', cls: 'bg-green-50 border-green-200 text-green-700', dot: 'bg-green-500', val: presentDays },
-                        { label: 'Leaves', cls: 'bg-blue-50 border-blue-200 text-blue-700', dot: 'bg-blue-500', val: leaveCount },
-                        { label: 'Late', cls: 'bg-amber-50 border-amber-200 text-amber-700', dot: 'bg-amber-500', val: lateDays },
-                      ].map(({ label, cls, dot, val }) => (
-                        <span key={label} className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-xs font-semibold ${cls}`}>
-                          <span className={`w-2 h-2 rounded-full ${dot}`} />{val} {label}
-                        </span>
+                  {/* Row 2: Stat cards */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+                    <StatCard icon={CheckCircle2} label="Present Days" value={presentDays} color="green" sub={`of ${totalWorkDays} working days`} />
+                    <StatCard icon={XCircle} label="Absent Days" value={Math.max(0, totalWorkDays - presentDays - leaveCount)} color="red" />
+                    <StatCard icon={AlertCircle} label="Late Marks" value={lateDays} color="amber" sub="after 9:05 AM" />
+                  </div>
+
+                  {/* Row 3: Calendar */}
+                  <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #EBEBF5', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', padding: 20 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 20, fontWeight: 900, color: '#0F172A' }}>{format(empMonth, 'MMMM yyyy')}</span>
+                        <button onClick={() => setEmpMonth(m => subMonths(m, 1))} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer', color: '#64748B' }}><ChevronLeft size={18} /></button>
+                        <button onClick={() => setEmpMonth(m => addMonths(m, 1))} style={{ padding: 4, border: 'none', background: 'none', cursor: 'pointer', color: '#64748B' }}><ChevronRight size={18} /></button>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12 }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981' }} /> Present</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#F43F5E' }} /> Absent</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#F59E0B' }} /> Late</span>
+                      </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+                      {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map(d => (
+                        <div key={d} style={{ textAlign: 'center', padding: '8px 0', fontSize: 11, fontWeight: 800, color: '#94A3B8', letterSpacing: '0.08em' }}>{d}</div>
                       ))}
+                      {[...Array(firstDow)].map((_, i) => <div key={`e${i}`} />)}
+                      {calDays.map(day => {
+                        const ds = format(day, 'yyyy-MM-dd')
+                        const rec = monthlyAttendance.find(r => r.date === ds)
+                        const today = isToday(day)
+                        const wknd = isWeekend(day)
+                        const status = rec ? resolveStatus(rec) : (day <= new Date() && !wknd ? 'Absent' : null)
+                        const barColor = status === 'Present' ? '#10B981' : status === 'Late' ? '#F59E0B' : status === 'On Leave' ? '#3B82F6' : status === 'Absent' ? '#F43F5E' : null
+                        return (
+                          <div key={ds} style={{
+                            minHeight: 64, padding: '6px 8px', borderRadius: 10,
+                            border: today ? '2px solid #7C3AED' : '1px solid #F1F5F9',
+                            background: today ? '#F5F3FF' : wknd ? '#FAFAFA' : '#fff',
+                            position: 'relative'
+                          }}>
+                            <div style={{ fontSize: 13, fontWeight: today ? 900 : 600, color: wknd ? '#CBD5E1' : '#0F172A' }}>{format(day, 'd')}</div>
+                            {today && <span style={{ position: 'absolute', top: 6, right: 8, width: 5, height: 5, borderRadius: '50%', background: '#7C3AED' }} />}
+                            {barColor && <div style={{ marginTop: 4, height: 3, borderRadius: 4, background: barColor }} />}
+                            {rec?.check_in && <div style={{ fontSize: 9, color: '#64748B', marginTop: 2 }}>{rec.check_in}{rec.check_out ? ` - ${rec.check_out}` : ''}</div>}
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
 
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left">
+                  {/* Row 4: Today's Logs */}
+                  <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #EBEBF5', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                    <div style={{ padding: '14px 20px', borderBottom: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 16, fontWeight: 900, color: '#0F172A' }}>Today's Logs</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: '#7C3AED', cursor: 'pointer' }}>View All History</span>
+                    </div>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
-                        <tr className="bg-gray-50 border-b border-gray-100">
-                          {['Date', 'Check In', 'Check Out', 'Work Hours', 'Overtime', 'Status'].map(h => (
-                            <th key={h} className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                        <tr style={{ background: '#F8FAFC', borderBottom: '1.5px solid #F1F5F9' }}>
+                          {['Date', 'Check In', 'Check Out', 'Working Hours', 'Status'].map(h => (
+                            <th key={h} style={{ padding: '10px 20px', textAlign: 'left', fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-50">
-                        {loading ? (
-                          [...Array(6)].map((_, i) => (
-                            <tr key={i}>{[...Array(6)].map((_, j) => (
-                              <td key={j} className="px-5 py-4">
-                                <div className="h-4 bg-gray-100 rounded animate-pulse" style={{ width: j === 0 ? '100px' : '70px' }} />
+                      <tbody>
+                        {(monthlyAttendance.length === 0 && !loading) ? (
+                          <tr><td colSpan={5} style={{ textAlign: 'center', padding: '32px 0', color: '#94A3B8', fontSize: 13 }}>No records yet</td></tr>
+                        ) : [...monthlyAttendance].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 7).map(rec => {
+                          const d = new Date(rec.date + 'T00:00:00')
+                          const status = resolveStatus(rec)
+                          const statusColors = { Present: { bg: '#D1FAE5', color: '#059669' }, Late: { bg: '#FEF3C7', color: '#B45309' }, Absent: { bg: '#FEE2E2', color: '#DC2626' }, 'On Leave': { bg: '#DBEAFE', color: '#1D4ED8' }, 'In Progress': { bg: '#EDE9FE', color: '#6D28D9' } }
+                          const sc = statusColors[status] || statusColors.Absent
+                          return (
+                            <tr key={rec.id || rec.date} style={{ borderBottom: '1px solid #F8FAFC' }}>
+                              <td style={{ padding: '12px 20px' }}>
+                                <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>{format(d, 'MMM dd, yyyy')}</div>
+                                <div style={{ fontSize: 11, color: '#94A3B8', textTransform: 'uppercase' }}>{format(d, 'EEEE')}</div>
                               </td>
-                            ))}</tr>
-                          ))
-                        ) : monthlyAttendance.length === 0 ? (
-                          <tr>
-                            <td colSpan={6} className="text-center py-16">
-                              <CalendarDays className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-                              <p className="text-gray-400 text-sm">No records for this month</p>
-                            </td>
-                          </tr>
-                        ) : (
-                          [...monthlyAttendance]
-                            .sort((a, b) => b.date.localeCompare(a.date))
-                            .map(rec => {
-                              const d = new Date(rec.date + 'T00:00:00')
-                              const workHrs = rec.work_hours || 0
-                              const extraHrs = Math.max(0, workHrs - 9)
-                              const status = resolveStatus(rec)
-                              const today = isToday(d)
-                              return (
-                                <tr key={rec.id || rec.date}
-                                  className={`hover:bg-blue-50/30 transition-colors ${today ? 'bg-primary-50/40' : ''}`}>
-                                  <td className="px-5 py-4">
-                                    <div className="flex items-center gap-2">
-                                      {today && <span className="w-1.5 h-1.5 rounded-full bg-primary-500 flex-shrink-0" />}
-                                      <div>
-                                        <p className="text-sm font-semibold text-gray-800">{format(d, 'dd MMM yyyy')}</p>
-                                        <p className="text-xs text-gray-400">{format(d, 'EEEE')}</p>
-                                      </div>
-                                    </div>
-                                  </td>
-                                  <td className="px-5 py-4">
-                                    {rec.check_in
-                                      ? <span className="flex items-center gap-1.5 text-sm text-gray-700 font-medium">
-                                        <CheckCircle2 className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />{rec.check_in}
-                                      </span>
-                                      : <span className="text-gray-300">—</span>}
-                                  </td>
-                                  <td className="px-5 py-4">
-                                    {rec.check_out
-                                      ? <span className="flex items-center gap-1.5 text-sm text-gray-700 font-medium">
-                                        <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />{rec.check_out}
-                                      </span>
-                                      : rec.check_in
-                                        ? <span className="flex items-center gap-1 text-blue-500 text-xs font-semibold"><Timer className="w-3 h-3" /> Pending</span>
-                                        : <span className="text-gray-300">—</span>}
-                                  </td>
-                                  <td className="px-5 py-4">
-                                    <span className="text-sm text-gray-700 font-medium">{fmtHours(workHrs)}</span>
-                                    {workHrs > 0 && (
-                                      <div className="mt-1 h-1 w-16 bg-gray-100 rounded-full overflow-hidden">
-                                        <div className="h-full bg-gradient-to-r from-primary-400 to-primary-600 rounded-full"
-                                          style={{ width: `${Math.min((workHrs / 9) * 100, 100)}%` }} />
-                                      </div>
-                                    )}
-                                  </td>
-                                  <td className="px-5 py-4 text-sm">
-                                    {extraHrs > 0
-                                      ? <span className="flex items-center gap-1 text-green-600 font-semibold text-xs">
-                                        <TrendingUp className="w-3 h-3" />+{fmtHours(extraHrs)}
-                                      </span>
-                                      : <span className="text-gray-300">—</span>}
-                                  </td>
-                                  <td className="px-5 py-4"><StatusBadge status={status} /></td>
-                                </tr>
-                              )
-                            })
-                        )}
+                              <td style={{ padding: '12px 20px', fontSize: 13, fontWeight: 600, color: '#1E293B' }}>{rec.check_in || '--:--'}</td>
+                              <td style={{ padding: '12px 20px', fontSize: 13, fontWeight: 600, color: '#1E293B' }}>{rec.check_out || (rec.check_in ? 'Pending' : '--:--')}</td>
+                              <td style={{ padding: '12px 20px', fontSize: 13, fontWeight: 600, color: '#1E293B' }}>{fmtHours(rec.work_hours || 0)}</td>
+                              <td style={{ padding: '12px 20px' }}>
+                                <span style={{ padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 800, textTransform: 'uppercase', background: sc.bg, color: sc.color }}>{status}</span>
+                              </td>
+                            </tr>
+                          )
+                        })}
                       </tbody>
                     </table>
                   </div>
-
-                  {!loading && monthlyAttendance.length > 0 && (
-                    <div className="px-5 py-3.5 bg-gray-50 border-t border-gray-100 flex items-center gap-6">
-                      <span className="text-xs text-gray-500">
-                        Total hours: <span className="font-bold text-gray-700">{fmtHours(totalHours)}</span>
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        Attendance rate: <span className="font-bold text-primary-600">{attendanceRate}%</span>
-                      </span>
-                      <div className="flex-1" />
-                      <div className="flex items-center gap-2">
-                        <div className="h-1.5 w-32 bg-gray-200 rounded-full overflow-hidden">
-                          <div className="h-full bg-gradient-to-r from-primary-400 to-primary-600 rounded-full transition-all duration-700"
-                            style={{ width: `${attendanceRate}%` }} />
-                        </div>
-                        <span className="text-xs font-semibold text-gray-600">{attendanceRate}%</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
+                </>
+              )
+            })()}
 
           </motion.div>
-        </div>
-      </main>
+        </main>
+      </div>
 
       {/* Manual Entry Modal */}
       {showManual && (
