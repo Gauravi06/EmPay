@@ -61,8 +61,6 @@ const TimeOff = () => {
   const filteredRequests = baseRequests.filter(req => {
     if (filterStatus !== 'all' && req.status !== filterStatus) return false
     if (filterType !== 'all' && req.type !== filterType) return false
-    // Special request from user: Admin should only see others (HR, Payroll, Employee)
-    if (isAdmin && req.user_id === user?.id) return false
     return true
   })
 

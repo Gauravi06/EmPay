@@ -8,6 +8,8 @@ import { Users, DollarSign, Clock, Calendar, Award, BarChart3, Shield, Key, Mega
 import toast from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
 
+const API_BASE = 'http://localhost:5000/api'
+
 const PIE_COLORS  = ['#7C3AED', '#38BDF8', '#FB923C', '#10B981', '#F43F5E', '#F59E0B']
 const card        = { background: '#fff', borderRadius: 16, padding: '20px 22px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #EBEBF5' }
 const btnPrimary  = { padding: '9px 18px', borderRadius: 10, border: 'none', background: '#7C3AED', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 14px rgba(124,58,237,0.3)' }
@@ -202,7 +204,7 @@ export default function Dashboard() {
 
   const loadAnnouncements = useCallback(async () => {
     try {
-      const res  = await fetch('http://localhost:5000/api/announcements', {
+      const res  = await fetch(`${API_BASE}/announcements`, {
         headers: { Authorization: `Bearer ${useAuthStore.getState().token}` },
       })
       const data = await res.json()
@@ -229,7 +231,14 @@ export default function Dashboard() {
 
   useEffect(() => { load(); loadAnnouncements() }, [load, loadAnnouncements])
 
+  const WORK_START_MIN = 9 * 60
+  const WORK_END_MIN = 18 * 60
+  const nowMins = () => { const n = new Date(); return n.getHours() * 60 + n.getMinutes() }
+
   const handleCheckIn = async () => {
+    const mins = nowMins()
+    if (mins < WORK_START_MIN) { toast.error('Check-in opens at 9:00 AM'); return }
+    if (mins >= WORK_END_MIN) { toast.error('Office hours ended at 6:00 PM'); return }
     try {
       const today = new Date().toISOString().split('T')[0], now = new Date().toTimeString().slice(0, 5)
       await checkIn(today, now); set({ checkedIn: true, checkInTime: now }); toast.success('Checked in!')
@@ -237,6 +246,8 @@ export default function Dashboard() {
   }
 
   const handleCheckOut = async () => {
+    const mins = nowMins()
+    if (mins >= WORK_END_MIN) { toast.error('Auto check-out applied at 6:00 PM'); return }
     try {
       const today = new Date().toISOString().split('T')[0], now = new Date().toTimeString().slice(0, 5)
       await checkOut(today, now); set({ checkedIn: false, checkInTime: null }); toast.success('Checked out!')
@@ -254,7 +265,7 @@ export default function Dashboard() {
   const postAnnouncement = async () => {
     if (!annTitle.trim() || !annBody.trim()) return
     try {
-      await fetch('http://localhost:5000/api/announcements', {
+      await fetch(`${API_BASE}/announcements`, {
         method:  'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -271,10 +282,13 @@ export default function Dashboard() {
   }
 
   const handleExportReport = () => {
+    // FIX: destructure from state inside handler to avoid stale closure
+    const { employees, todayAtt, leaveRequests, summary } = state
+    const _presentCount = todayAtt.filter(a => a.status === 'present').length
     const rows = [
       ['Metric', 'Value'],
       ['Total Employees', summary.totalEmployees || employees.length],
-      ['Present Today', summary.presentToday ?? presentCount],
+      ['Present Today', summary.presentToday ?? _presentCount],
       ['Pending Leaves', summary.pendingLeaves ?? leaveRequests.filter(l => l.status === 'pending').length],
       ['Monthly Payroll Cost', summary.monthlyPayrollCost || summary.totalPayroll || 0],
     ]

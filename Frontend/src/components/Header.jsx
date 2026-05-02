@@ -5,9 +5,13 @@ import { useAuthStore } from '../stores/authStore'
 import { motion, AnimatePresence } from 'framer-motion'
 
 const Header = () => {
-  const { user, logout } = useAuthStore()
+  const { user, logout, fetchEmployees } = useAuthStore()
   const navigate = useNavigate()
   const [isOpen, setIsOpen] = useState(false)
+  const [searchVal, setSearchVal] = useState('')
+  const [searchResults, setSearchResults] = useState([])
+  const [showResults, setShowResults] = useState(false)
+  const searchRef = useRef(null)
   const dropdownRef = useRef(null)
 
   const companyName = (() => { try { return localStorage.getItem('empay_company_name') } catch { return null } })()
@@ -50,6 +54,23 @@ const Header = () => {
         <Search size={16} strokeWidth={2.5} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} />
         <input
           placeholder="Search employees or reports..."
+          value={searchVal}
+          onChange={async e => {
+            const v = e.target.value
+            setSearchVal(v)
+            if (v.trim().length < 2) { setSearchResults([]); setShowResults(false); return }
+            try {
+              const emps = await fetchEmployees()
+              const q = v.toLowerCase()
+              const matches = (emps || []).filter(emp =>
+                `${emp.firstName||emp.first_name} ${emp.lastName||emp.last_name} ${emp.loginId||emp.login_id} ${emp.email}`.toLowerCase().includes(q)
+              ).slice(0, 6)
+              setSearchResults(matches)
+              setShowResults(true)
+            } catch {}
+          }}
+          onBlur={() => setTimeout(() => setShowResults(false), 200)}
+          onFocus={e => { e.target.style.borderColor = '#7C3AED'; e.target.style.background = '#fff'; e.target.style.boxShadow = '0 0 0 4px rgba(124,58,237,0.1)'; if (searchResults.length) setShowResults(true) }}
           style={{
             width: '100%', padding: '12px 16px 12px 48px',
             background: '#F8F9FF', border: '2px solid #F0F0FB',
@@ -57,9 +78,27 @@ const Header = () => {
             outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit',
             transition: 'all 0.2s ease',
           }}
-          onFocus={e => { e.target.style.borderColor = '#7C3AED'; e.target.style.background = '#fff'; e.target.style.boxShadow = '0 0 0 4px rgba(124,58,237,0.1)' }}
-          onBlur={e => { e.target.style.borderColor = '#F0F0FB'; e.target.style.background = '#F8F9FF'; e.target.style.boxShadow = 'none' }}
         />
+        {showResults && searchResults.length > 0 && (
+          <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, background: '#fff', borderRadius: 14, boxShadow: '0 12px 40px rgba(0,0,0,0.12)', border: '1px solid #EDE9FE', zIndex: 300, overflow: 'hidden' }}>
+            {searchResults.map(emp => (
+              <div key={emp.id}
+                onMouseDown={() => { navigate(`/employee/${emp.id}`); setSearchVal(''); setShowResults(false) }}
+                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', cursor: 'pointer', borderBottom: '1px solid #F8FAFC' }}
+                onMouseEnter={e => e.currentTarget.style.background = '#F5F3FF'}
+                onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+              >
+                <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg,#7C3AED,#A78BFA)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 12, flexShrink: 0 }}>
+                  {(emp.firstName||emp.first_name||'?')[0]}{(emp.lastName||emp.last_name||'')[0]}
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>{emp.firstName||emp.first_name} {emp.lastName||emp.last_name}</div>
+                  <div style={{ fontSize: 11, color: '#94A3B8' }}>{emp.loginId||emp.login_id} · {emp.department||emp.role}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div style={{ flex: 1 }} />

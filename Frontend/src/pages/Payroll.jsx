@@ -104,6 +104,15 @@ const Payroll = () => {
     }
   }
 
+  const handleStatusCycle = async (p) => {
+    const nextStatus = p.status === 'draft' ? 'approved' : 'paid'
+    try {
+      await updatePayrollStatus(p.id, nextStatus)
+      toast.success(`Payroll marked as ${nextStatus}`)
+      loadData()
+    } catch (e) { toast.error(e.message || 'Failed to update status') }
+  }
+
   const handlePrintPayslip = (p) => {
     const win = window.open('', '_blank')
     win.document.write(`
@@ -369,6 +378,14 @@ const Payroll = () => {
                             <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
                               <ActionBtn onClick={() => { setSelectedPayroll(p); setShowPayslip(true) }} icon={<Eye size={16} />} color="#7C3AED" bg="#F5F3FF" />
                               <ActionBtn onClick={() => handlePrintPayslip(p)} icon={<Printer size={16} />} color="#64748B" bg="#F8FAFC" />
+                              {canGeneratePayroll && p.status !== 'paid' && (
+                                <ActionBtn
+                                  onClick={() => handleStatusCycle(p)}
+                                  icon={<span style={{fontSize:10,fontWeight:900}}>{p.status==='draft'?'▶':'✓'}</span>}
+                                  color="#10B981" bg="#F0FDF4"
+                                  title={p.status==='draft'?'Mark Approved':'Mark Paid'}
+                                />
+                              )}
                             </div>
                           </td>
                         </motion.tr>

@@ -8,7 +8,12 @@ import { Shield, Users, Key, Save, Edit2, CheckCircle, XCircle, Lock, Unlock } f
 import toast from 'react-hot-toast'
 
 const AdminSettings = () => {
-  const { employees, updateUserRole, hasPermission, user: currentUser } = useAuthStore()
+  const { employees: storeEmployees, updateUserRole, hasPermission, user: currentUser, fetchEmployees } = useAuthStore()
+  const [employees, setEmployees] = React.useState(storeEmployees || [])
+
+  React.useEffect(() => {
+    fetchEmployees().then(emps => { if (emps) setEmployees(emps) }).catch(() => {})
+  }, [])
   const [selectedEmployee, setSelectedEmployee] = useState(null)
   const [selectedRole, setSelectedRole] = useState('')
   
@@ -18,7 +23,9 @@ const AdminSettings = () => {
         toast.error("You cannot change your own role")
         return
       }
-      updateUserRole(selectedEmployee.id, selectedRole)
+      updateUserRole(selectedEmployee.id, selectedRole).then(() => {
+        fetchEmployees().then(emps => { if (emps) setEmployees(emps) }).catch(() => {})
+      })
       toast.success(`Role updated successfully for ${selectedEmployee.firstName} ${selectedEmployee.lastName}`)
       setSelectedEmployee(null)
       setSelectedRole('')

@@ -56,14 +56,18 @@ const Reports = () => {
     )
   }
 
-  const attendanceData = [
-    { month: 'Jan', present: 22, absent: 2, leave: 1 },
-    { month: 'Feb', present: 20, absent: 3, leave: 2 },
-    { month: 'Mar', present: 23, absent: 1, leave: 1 },
-    { month: 'Apr', present: 21, absent: 2, leave: 2 },
-    { month: 'May', present: 22, absent: 1, leave: 2 },
-    { month: 'Jun', present: 21, absent: 2, leave: 2 }
-  ]
+  // Build attendance data from real payroll records
+  const attendanceData = Array.from({ length: 6 }, (_, i) => {
+    const monthIdx = new Date().getMonth() - 5 + i
+    const d = new Date(new Date().getFullYear(), monthIdx, 1)
+    const month = d.toLocaleString('default', { month: 'short' })
+    const yr = d.getFullYear(), mo = d.getMonth() + 1
+    const monthPayrolls = payrolls.filter(p => p.year === yr && p.month === mo)
+    const present = monthPayrolls.reduce((s, p) => s + (p.days_present || 0), 0)
+    const absent = monthPayrolls.reduce((s, p) => s + ((p.working_days || 22) - (p.days_present || 0)), 0)
+    const leave = 0
+    return { month, present: present || 0, absent: absent || 0, leave }
+  })
 
   const departmentStats = [
     { name: 'Engineering', employees: 12, attendance: 92, turnover: 5 },
@@ -355,9 +359,16 @@ const Reports = () => {
                   </ResponsiveContainer>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  <SummaryCard label="Total Force" val={employees.length} icon={<Users/>} color="#7C3AED" />
-                  <SummaryCard label="Monthly Payroll" val={`₹${(employees.length * 50000).toLocaleString()}`} icon={<DollarSign/>} color="#10B981" />
-                  <SummaryCard label="Average Salary" val="₹50,000" icon={<TrendingUp/>} color="#3B82F6" />
+                  {(() => {
+                    const currMonth = new Date().getMonth() + 1, currYear = new Date().getFullYear()
+                    const monthlyTotal = payrolls.filter(p => p.year === currYear && p.month === currMonth).reduce((s,p) => s+(p.gross_wage||0), 0)
+                    const avgSalary = employees.length > 0 ? Math.round(monthlyTotal / employees.length) : 0
+                    return (<>
+                      <SummaryCard label="Total Force" val={employees.length} icon={<Users/>} color="#7C3AED" />
+                      <SummaryCard label="Monthly Payroll" val={`₹${monthlyTotal.toLocaleString('en-IN',{maximumFractionDigits:0})}`} icon={<DollarSign/>} color="#10B981" />
+                      <SummaryCard label="Average Salary" val={avgSalary ? `₹${avgSalary.toLocaleString('en-IN',{maximumFractionDigits:0})}` : '—'} icon={<TrendingUp/>} color="#3B82F6" />
+                    </>)
+                  })()}
                 </div>
               </motion.div>
             )}
