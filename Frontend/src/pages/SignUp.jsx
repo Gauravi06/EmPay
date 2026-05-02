@@ -108,7 +108,7 @@ const EmPayLogo = () => (
 
 const SignUp = () => {
   const navigate = useNavigate()
-  const { addEmployee } = useAuthStore()
+  const { signup } = useAuthStore()
   const [loading, setLoading] = useState(false)
   const [showPass, setShowPass] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
@@ -142,20 +142,25 @@ const SignUp = () => {
       const nameParts = form.name.trim().split(' ')
       const firstName = nameParts[0] || ''
       const lastName = nameParts.slice(1).join(' ') || ''
-      const result = await addEmployee({
-        firstName, lastName,
+      
+      const result = await signup({
+        firstName, 
+        lastName,
         email: form.email,
         phone: form.phone,
         password: form.password,
         companyName: form.companyName,
-        department: 'General',
-        role: 'employee',
-        salary: 0
+        role: 'employee'
       })
-      toast.success(`Account created! Login ID: ${result.loginId || result.login_id}`)
-      navigate('/login')
+
+      if (result.success) {
+        toast.success(`Account created! Login ID: ${result.loginId}`)
+        navigate('/login')
+      } else {
+        toast.error(result.message || 'Failed to create account')
+      }
     } catch (err) {
-      toast.error(err.message || 'Failed to create account')
+      toast.error(err.message || 'An unexpected error occurred')
     } finally {
       setLoading(false)
     }

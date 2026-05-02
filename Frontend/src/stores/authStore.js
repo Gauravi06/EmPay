@@ -111,6 +111,18 @@ export const useAuthStore = create(
         }
       },
 
+      signup: async (signupData) => {
+        try {
+          const data = await apiFetch('/auth/signup', {
+            method: 'POST',
+            body: JSON.stringify(signupData)
+          })
+          return { success: true, loginId: data.loginId, role: data.role }
+        } catch (e) {
+          return { success: false, message: e.message }
+        }
+      },
+
       logout: () => set({ isAuthenticated: false, user: null, token: null }),
 
       refreshUser: async () => {
