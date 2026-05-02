@@ -59,9 +59,6 @@ def init_db(app):
                 date TEXT NOT NULL,
                 check_in TEXT,
                 check_out TEXT,
-                break_time REAL DEFAULT 0,
-                work_hours REAL DEFAULT 0,
-                overtime REAL DEFAULT 0,
                 status TEXT DEFAULT 'present',
                 notes TEXT,
                 FOREIGN KEY (user_id) REFERENCES users (id),
@@ -82,8 +79,7 @@ def init_db(app):
                 net_salary REAL,
                 status TEXT DEFAULT 'pending',
                 payment_date TEXT,
-                FOREIGN KEY (user_id) REFERENCES users (id),
-                UNIQUE(user_id, month, year)
+                FOREIGN KEY (user_id) REFERENCES users (id)
             );
         ''')
         

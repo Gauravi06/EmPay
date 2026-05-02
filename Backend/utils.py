@@ -64,3 +64,13 @@ def admin_required(f):
             return jsonify({'error': 'Admin access required'}), 403
         return f(current_user, *args, **kwargs)
     return decorated
+
+def role_required(*roles):
+    def decorator(f):
+        @wraps(f)
+        def decorated(current_user, *args, **kwargs):
+            if current_user['role'] not in roles:
+                return jsonify({'error': 'Access denied'}), 403
+            return f(current_user, *args, **kwargs)
+        return decorated
+    return decorator

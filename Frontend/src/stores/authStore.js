@@ -204,9 +204,35 @@ export const useAuthStore = create(
         return data.attendance
       },
 
+      checkIn: async (date, time) => {
+        const { token } = get()
+        const data = await apiFetch('/attendance/check-in', {
+          method: 'POST',
+          body: JSON.stringify({ date, time })
+        }, token)
+        return data
+      },
+
+      checkOut: async (date, time) => {
+        const { token } = get()
+        const data = await apiFetch('/attendance/check-out', {
+          method: 'POST',
+          body: JSON.stringify({ date, time })
+        }, token)
+        return data
+      },
+
+      autoCheckOut: async () => {
+        const { token } = get()
+        const data = await apiFetch('/attendance/auto-checkout', {
+          method: 'POST'
+        }, token)
+        return data
+      },
+
       getAttendance: async (employeeId, year, month) => {
         const { token } = get()
-        let url = `/attendance?employeeId=${employeeId}`
+        let url = `/attendance?employee_id=${employeeId}`
         if (year && month) url += `&year=${year}&month=${month}`
         const data = await apiFetch(url, {}, token)
         return data.attendance
@@ -215,7 +241,7 @@ export const useAuthStore = create(
       getMonthlyAttendance: async (employeeId, year, month) => {
         const { token } = get()
         const data = await apiFetch(
-          `/attendance?employeeId=${employeeId}&year=${year}&month=${month}`, {}, token
+          `/attendance?employee_id=${employeeId}&year=${year}&month=${month}`, {}, token
         )
         return data.attendance
       },
@@ -228,7 +254,7 @@ export const useAuthStore = create(
 
       getAttendanceForDate: async (employeeId, date) => {
         const { token } = get()
-        const data = await apiFetch(`/attendance?employeeId=${employeeId}`, {}, token)
+        const data = await apiFetch(`/attendance?employee_id=${employeeId}`, {}, token)
         return data.attendance?.find(a => a.date === date)
       },
 

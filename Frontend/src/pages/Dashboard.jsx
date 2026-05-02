@@ -14,7 +14,7 @@ import toast from 'react-hot-toast'
 
 const Dashboard = () => {
   const {
-    user, markAttendance, getTodayAttendance,
+    user, checkIn, checkOut, autoCheckOut, getTodayAttendance,
     fetchEmployees, fetchReportsSummary, hasPermission
   } = useAuthStore()
 
@@ -29,6 +29,21 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true)
 
   const canViewReports = hasPermission('reports', 'view')
+
+  // Auto check-out at 6:00 PM
+  useEffect(() => {
+    if (!user) return
+    const interval = setInterval(() => {
+      const now = new Date()
+      if (now.getHours() === 18 && now.getMinutes() === 0) {
+        autoCheckOut().then(() => {
+          setCheckedIn(false)
+          setCheckInTime(null)
+        }).catch(() => { })
+      }
+    }, 60000)
+    return () => clearInterval(interval)
+  }, [user])
 
   useEffect(() => {
     const load = async () => {
@@ -47,7 +62,7 @@ const Dashboard = () => {
         }
 
         // Check if current user already checked in today
-        const myRecord = (att || []).find(a => a.id === user?.id)
+        const myRecord = (att || []).find(a => a.user_id === user?.id || a.id === user?.id)
         if (myRecord?.check_in) {
           setCheckedIn(true)
           setCheckInTime(myRecord.check_in)
@@ -74,12 +89,12 @@ const Dashboard = () => {
     try {
       const today = new Date().toISOString().split('T')[0]
       const now = new Date().toTimeString().slice(0, 5)
-      await markAttendance(user.id, today, now, null, 0)
+      await checkIn(today, now)
       setCheckedIn(true)
       setCheckInTime(now)
       toast.success('Checked in successfully!')
     } catch (e) {
-      toast.error('Failed to check in')
+      toast.error(e.message || 'Failed to check in')
     }
   }
 
@@ -87,12 +102,12 @@ const Dashboard = () => {
     try {
       const today = new Date().toISOString().split('T')[0]
       const now = new Date().toTimeString().slice(0, 5)
-      await markAttendance(user.id, today, checkInTime, now, 0)
+      await checkOut(today, now)
       toast.success('Checked out successfully!')
       setCheckedIn(false)
       setCheckInTime(null)
     } catch (e) {
-      toast.error('Failed to check out')
+      toast.error(e.message || 'Failed to check out')
     }
   }
 
@@ -105,7 +120,7 @@ const Dashboard = () => {
         {/* Welcome */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
-          <p className="text-gray-600">Welcome back, {user?.first_name}!</p>
+          <p className="text-gray-600">Welcome back, {user?.firstName || user?.first_name}!</p>
         </div>
 
         {/* Check In / Check Out — employees only */}

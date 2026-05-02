@@ -332,7 +332,7 @@ const ManualEntryModal = ({ onClose, onSave, userId, employees, isAdminOrHR }) =
    MAIN COMPONENT
 ═══════════════════════════════════════════ */
 const Attendance = () => {
-  const { user, markAttendance, getMonthlyAttendance, getTodayAttendance, fetchEmployees } = useAuthStore()
+  const { user, markAttendance, checkIn, checkOut, autoCheckOut, getMonthlyAttendance, getTodayAttendance, fetchEmployees } = useAuthStore()
   const isAdminOrHR = user?.role === ROLES.ADMIN || user?.role === ROLES.HR_OFFICER
 
   const [loading, setLoading] = useState(true)
@@ -368,6 +368,22 @@ const Attendance = () => {
 
   useEffect(() => { if (user) load() }, [load])
 
+  // Auto check-out at 6:00 PM
+  useEffect(() => {
+    if (!user) return
+    const checkAutoCheckout = () => {
+      const now = new Date()
+      const h = now.getHours()
+      const m = now.getMinutes()
+      // Trigger at exactly 18:00
+      if (h === 18 && m === 0) {
+        autoCheckOut().then(() => load()).catch(() => { })
+      }
+    }
+    const interval = setInterval(checkAutoCheckout, 60000) // check every minute
+    return () => clearInterval(interval)
+  }, [user])
+
   // Today's record for employee check-in panel
   const todayStr = format(new Date(), 'yyyy-MM-dd')
   const todayRecord = monthlyAttendance.find(r => r.date === todayStr)
@@ -376,7 +392,7 @@ const Attendance = () => {
     setActionLoading(true)
     try {
       const now = format(new Date(), 'HH:mm')
-      await markAttendance(user.id, todayStr, now, null, 0)
+      await checkIn(todayStr, now)
       toast.success('Checked in successfully!')
       load()
     } catch (e) { toast.error(e.message || 'Failed to check in') }
@@ -387,7 +403,7 @@ const Attendance = () => {
     setActionLoading(true)
     try {
       const now = format(new Date(), 'HH:mm')
-      await markAttendance(user.id, todayStr, todayRecord.check_in, now, 60)
+      await checkOut(todayStr, now)
       toast.success('Checked out successfully!')
       load()
     } catch (e) { toast.error(e.message || 'Failed to check out') }
@@ -407,10 +423,16 @@ const Attendance = () => {
   /* ─── derived stats ─── */
   const daysInMonth = eachDayOfInterval({ start: startOfMonth(empMonth), end: endOfMonth(empMonth) })
   const totalWorkDays = daysInMonth.filter(d => !isWeekend(d)).length
-  const presentDays = monthlyAttendance.filter(a => a.check_in).length
+  const presentDays = monthlyAttendance.filter(a => {
+    if (!a.check_in) return false
+    const d = new Date(a.date + 'T00:00:00')
+    return !isWeekend(d)
+  }).length
   const leaveCount = monthlyAttendance.filter(a => a.status === 'leave').length
   const lateDays = monthlyAttendance.filter(a => {
     if (!a.check_in) return false
+    const d = new Date(a.date + 'T00:00:00')
+    if (isWeekend(d)) return false
     const [h, m] = a.check_in.split(':').map(Number)
     return h * 60 + m > 9 * 60 + 5
   }).length
@@ -859,4 +881,4 @@ const Attendance = () => {
   )
 }
 
-export default Attendanc
+export default Attendance
