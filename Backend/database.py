@@ -51,7 +51,7 @@ def init_db(app):
             );
         ''')
 
-        # Attendance Table (with work_hours)
+        # Attendance Table
         db.execute('''
             CREATE TABLE IF NOT EXISTS attendance (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -67,12 +67,11 @@ def init_db(app):
             );
         ''')
 
-        # Add work_hours column if it doesn't exist (migration for existing DBs)
         try:
             db.execute('ALTER TABLE attendance ADD COLUMN work_hours REAL')
             db.commit()
         except Exception:
-            pass  # Column already exists
+            pass
 
         # Payroll Table
         db.execute('''
@@ -109,7 +108,6 @@ def init_db(app):
             );
         ''')
 
-        # Add missing columns to time_off if they don't exist
         for col, defn in [('approved_by', 'INTEGER'), ('comments', 'TEXT')]:
             try:
                 db.execute(f'ALTER TABLE time_off ADD COLUMN {col} {defn}')
@@ -127,6 +125,18 @@ def init_db(app):
                 url TEXT NOT NULL,
                 upload_date TEXT DEFAULT (datetime('now')),
                 FOREIGN KEY (user_id) REFERENCES users (id)
+            );
+        ''')
+
+        # Announcements Table
+        db.execute('''
+            CREATE TABLE IF NOT EXISTS announcements (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                title      TEXT NOT NULL,
+                body       TEXT NOT NULL,
+                created_by INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (created_by) REFERENCES users (id)
             );
         ''')
 

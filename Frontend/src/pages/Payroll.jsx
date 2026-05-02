@@ -71,7 +71,6 @@ const Payroll = () => {
 
   useEffect(() => { if (user) loadData() }, [loadData, user])
 
-  // Filter payrolls
   const filteredPayrolls = payrolls.filter(p => {
     if (searchTerm && !p.employee_name?.toLowerCase().includes(searchTerm.toLowerCase())) return false
     if (selectedEmployee && p.user_id !== selectedEmployee.id) return false
@@ -96,7 +95,7 @@ const Payroll = () => {
     setGenerating(true)
     try {
       await generatePayroll(targetEmployee.id, selectedYear, selectedMonth)
-      toast.success(`Payroll generated for ${targetEmployee.firstName || targetEmployee.first_name}`)
+      toast.success(`Payroll generated for ${targetEmployee.first_name}`)
       loadData()
     } catch (e) {
       toast.error(e.message || 'Failed to generate payroll')
@@ -140,7 +139,7 @@ const Payroll = () => {
         <div class="info-item"><span class="label">Department</span><span class="value">${p.department || 'General'}</span></div>
         <div class="info-item"><span class="label">Location</span><span class="value">${p.location || 'Head Office'}</span></div>
         <div class="info-item"><span class="label">UAN No</span><span class="value">${p.uan || 'N/A'}</span></div>
-        <div class="info-item"><span class="label">Days Worked</span><span class="value">${p.worked_days}/${p.total_days}</span></div>
+        <div class="info-item"><span class="label">Days Worked</span><span class="value">${p.days_present}/${p.working_days}</span></div>
       </div>
       <table>
         <thead>
@@ -170,7 +169,6 @@ const Payroll = () => {
     win.document.close()
   }
 
-  // Chart data from payrolls
   const monthlyChartData = Array.from({ length: 12 }, (_, i) => {
     const mp = payrolls.filter(p => p.year === selectedYear && p.month === i + 1)
     return {
@@ -200,7 +198,6 @@ const Payroll = () => {
         <Header />
         <main style={{ padding: '96px 32px 40px' }}>
 
-          {/* Page Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
             <div>
               <motion.h1 initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
@@ -219,7 +216,6 @@ const Payroll = () => {
             )}
           </div>
 
-          {/* Stat Cards */}
           <div style={{ display: 'flex', gap: 20, marginBottom: 32, flexWrap: 'wrap' }}>
             <StatCard title="Team Strength" value={employees.length} icon="👥" badge="Active" badgeColor="#10B981" />
             <StatCard title="Monthly Budget" value={`₹${(currentMonthGross / 1000).toFixed(1)}k`} icon="💰" badge="Gross" badgeColor="#3B82F6" />
@@ -227,7 +223,6 @@ const Payroll = () => {
             <StatCard title="Monthly Cycle" value={thisMonthCount} icon="📅" badge={thisMonthCount > 0 ? 'Cycle Active' : 'Waiting'} badgeColor={thisMonthCount > 0 ? '#10B981' : '#F59E0B'} />
           </div>
 
-          {/* Charts Row */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 24, marginBottom: 32 }}>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
               style={{ ...cardStyle, position: 'relative', overflow: 'hidden' }}>
@@ -261,7 +256,6 @@ const Payroll = () => {
               </ResponsiveContainer>
             </motion.div>
 
-            {/* Department Breakdown */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
               style={cardStyle}>
               <div style={{ fontSize: 19, fontWeight: 900, color: '#0F172A', letterSpacing: '-0.5px', marginBottom: 4 }}>Talent Mix</div>
@@ -290,7 +284,6 @@ const Payroll = () => {
             </motion.div>
           </div>
 
-          {/* Filters Bar */}
           <div style={{ ...cardStyle, marginBottom: 24, padding: '20px' }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-end' }}>
               <FilterSelect label="Cycle Year" value={selectedYear} options={[2024, 2025, 2026]} onChange={v => setSelectedYear(parseInt(v))} />
@@ -303,7 +296,7 @@ const Payroll = () => {
                     style={{ width: '100%', padding: '12px 16px', borderRadius: 14, border: '1.5px solid #E2E8F0', background: '#fff', fontSize: 14, fontWeight: 700, color: '#1E293B', outline: 'none', appearance: 'none', backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%237C3AED%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '16px' }}>
                     <option value="">Select an employee...</option>
                     {employees.map(emp => (
-                      <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName}</option>
+                      <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name}</option>
                     ))}
                   </select>
                 </div>
@@ -320,7 +313,6 @@ const Payroll = () => {
             </div>
           </div>
 
-          {/* Records Table */}
           <div style={{ ...cardStyle, padding: '0', overflow: 'hidden' }}>
             <div style={{ padding: '24px 28px', borderBottom: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ fontSize: 19, fontWeight: 900, color: '#0F172A', letterSpacing: '-0.3px' }}>Payroll Vault</div>
@@ -390,7 +382,6 @@ const Payroll = () => {
         </main>
       </div>
 
-      {/* Modern Payslip Modal */}
       <AnimatePresence>
         {showPayslip && selectedPayroll && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -422,7 +413,7 @@ const Payroll = () => {
                   <InfoItem label="Department" val={selectedPayroll.department || 'General'} />
                   <InfoItem label="Location" val={selectedPayroll.location || 'Head Office'} />
                   <InfoItem label="UAN Number" val={selectedPayroll.uan || 'N/A'} />
-                  <InfoItem label="Days Count" val={`${selectedPayroll.worked_days}/${selectedPayroll.total_days}`} />
+                  <InfoItem label="Days Count" val={`${selectedPayroll.days_present}/${selectedPayroll.working_days}`} />
                 </div>
 
                 <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 40 }}>

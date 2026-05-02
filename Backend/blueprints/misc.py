@@ -154,3 +154,37 @@ def upload_document(current_user):
     )
     conn.commit()
     return jsonify({'message': 'Document uploaded'})
+
+# ── Announcements ─────────────────────────────────────────────────────────────
+
+@misc_bp.route('/announcements', methods=['GET'])
+@token_required
+def get_announcements(current_user):
+    conn = get_db()
+    rows = conn.execute('''
+        SELECT a.*, u.first_name || ' ' || u.last_name AS author
+        FROM announcements a
+        LEFT JOIN users u ON a.created_by = u.id
+        ORDER BY a.created_at DESC
+        LIMIT 10
+    ''').fetchall()
+    return jsonify({'announcements': [dict(r) for r in rows]})
+
+
+@misc_bp.route('/announcements', methods=['POST'])
+@token_required
+def create_announcement(current_user):
+    if current_user['role'] != ADMIN:
+        return jsonify({'error': 'Admin only'}), 403
+    data  = request.json
+    title = data.get('title', '').strip()
+    body  = data.get('body', '').strip()
+    if not title or not body:
+        return jsonify({'error': 'title and body required'}), 400
+    conn  = get_db()
+    conn.execute(
+        'INSERT INTO announcements (title, body, created_by) VALUES (?, ?, ?)',
+        (title, body, current_user['id'])
+    )
+    conn.commit()
+    return jsonify({'message': 'Announcement posted'})

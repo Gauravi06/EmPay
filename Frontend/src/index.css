@@ -27,4 +27,16 @@
   .sidebar-item-active {
     @apply bg-primary-50 text-primary-600;
   }
+
+  .nav-grid {
+    @apply grid grid-cols-2 md:grid-cols-4 gap-6;
+  }
+
+  .nav-card {
+    @apply flex flex-col items-center justify-center gap-4 p-8 bg-white rounded-[2rem] border border-slate-100 shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer;
+  }
+
+  .notice-board {
+    @apply bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100;
+  }
 }

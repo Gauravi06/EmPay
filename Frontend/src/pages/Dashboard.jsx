@@ -1,16 +1,17 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { useAuthStore, ROLES } from '../stores/authStore'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import { motion } from 'framer-motion'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
+import { Users, DollarSign, Clock, Calendar, Award, BarChart3, Shield, Key, Megaphone } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
 
-const PIE_COLORS = ['#7C3AED', '#38BDF8', '#FB923C', '#10B981', '#F43F5E', '#F59E0B']
-const card = { background: '#fff', borderRadius: 16, padding: '20px 22px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #EBEBF5' }
-const btnPrimary = { padding: '9px 18px', borderRadius: 10, border: 'none', background: '#7C3AED', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 14px rgba(124,58,237,0.3)' }
-const btnOutline = { padding: '9px 18px', borderRadius: 10, border: '1.5px solid #E5E7EB', background: '#fff', color: '#111827', fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }
+const PIE_COLORS  = ['#7C3AED', '#38BDF8', '#FB923C', '#10B981', '#F43F5E', '#F59E0B']
+const card        = { background: '#fff', borderRadius: 16, padding: '20px 22px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #EBEBF5' }
+const btnPrimary  = { padding: '9px 18px', borderRadius: 10, border: 'none', background: '#7C3AED', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 14px rgba(124,58,237,0.3)' }
+const btnOutline  = { padding: '9px 18px', borderRadius: 10, border: '1.5px solid #E5E7EB', background: '#fff', color: '#111827', fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }
 const statusColor = s => ({ approved: '#10B981', rejected: '#EF4444', pending: '#F59E0B' }[s] || '#9CA3AF')
 
 const Badge = ({ label, color }) => (
@@ -31,7 +32,6 @@ const StatCard = ({ title, value, icon, badge, badgeColor, loading }) => (
   </motion.div>
 )
 
-// ─── Impressive Custom SVG Bar Chart ──────────────────────────────────────────
 function AttendanceChart({ barData, label, subtitle, isPayroll }) {
   const [hovered, setHovered] = useState(null)
   const [animated, setAnimated] = useState(false)
@@ -45,23 +45,20 @@ function AttendanceChart({ barData, label, subtitle, isPayroll }) {
   const chartW = W - padL - padR
   const chartH = H - padT - padB
   const maxVal = Math.max(...barData.map(d => d.value), 1)
-  const barW = Math.min(34, (chartW / barData.length) * 0.52)
-  const gap = chartW / barData.length
+  const barW   = Math.min(34, (chartW / barData.length) * 0.52)
+  const gap    = chartW / barData.length
   const peakIdx = barData.reduce((pi, d, i) => d.value > barData[pi].value ? i : pi, 0)
-  const yTicks = [0, 0.25, 0.5, 0.75, 1].map(f => ({ val: Math.round(maxVal * f), y: padT + chartH * (1 - f) }))
-
-  const pts = barData.map((d, i) => ({
+  const yTicks  = [0, 0.25, 0.5, 0.75, 1].map(f => ({ val: Math.round(maxVal * f), y: padT + chartH * (1 - f) }))
+  const pts     = barData.map((d, i) => ({
     x: padL + gap * i + gap / 2,
-    y: padT + chartH * (1 - (animated ? d.value : 0) / maxVal)
+    y: padT + chartH * (1 - (animated ? d.value : 0) / maxVal),
   }))
 
   return (
     <div style={{ ...card, position: 'relative', overflow: 'hidden' }}>
-      {/* Ambient glow */}
       <div style={{ position: 'absolute', top: -60, right: -60, width: 220, height: 220, borderRadius: '50%', background: 'radial-gradient(circle, rgba(124,58,237,0.08) 0%, transparent 70%)', pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', bottom: 20, left: 30, width: 140, height: 140, borderRadius: '50%', background: 'radial-gradient(circle, rgba(56,189,248,0.05) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
-      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 }}>
         <div>
           <div style={{ fontSize: 19, fontWeight: 900, color: '#0F172A', letterSpacing: '-0.4px' }}>{isPayroll ? 'Payroll Overview' : 'Attendance Overview'}</div>
@@ -69,53 +66,41 @@ function AttendanceChart({ barData, label, subtitle, isPayroll }) {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: '#7C3AED' }}>
-            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#7C3AED', display: 'inline-block', boxShadow: '0 0 0 3px rgba(124,58,237,0.2)' }} />
-            Peak
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#7C3AED', display: 'inline-block', boxShadow: '0 0 0 3px rgba(124,58,237,0.2)' }} /> Peak
           </span>
           <span style={{ fontSize: 12, fontWeight: 700, color: '#374151', background: '#F3F4F6', border: '1px solid #E5E7EB', borderRadius: 8, padding: '5px 12px' }}>{label}</span>
         </div>
       </div>
 
-      {/* SVG */}
       <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ overflow: 'visible', display: 'block', marginTop: 6 }}>
         <defs>
           <linearGradient id="peakGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#7C3AED" />
+            <stop offset="0%"   stopColor="#7C3AED" />
             <stop offset="100%" stopColor="#A78BFA" stopOpacity="0.75" />
           </linearGradient>
           <linearGradient id="normGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#C4B5FD" stopOpacity="0.95" />
+            <stop offset="0%"   stopColor="#C4B5FD" stopOpacity="0.95" />
             <stop offset="100%" stopColor="#EDE9FE" stopOpacity="0.5" />
           </linearGradient>
           <linearGradient id="hovGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#8B5CF6" />
+            <stop offset="0%"   stopColor="#8B5CF6" />
             <stop offset="100%" stopColor="#C4B5FD" stopOpacity="0.8" />
           </linearGradient>
           <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#7C3AED" stopOpacity="0.1" />
+            <stop offset="0%"   stopColor="#7C3AED" stopOpacity="0.1" />
             <stop offset="100%" stopColor="#7C3AED" stopOpacity="0" />
           </linearGradient>
-          <filter id="peakGlow">
-            <feGaussianBlur stdDeviation="5" result="b" />
-            <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
-          </filter>
-          <filter id="dropShadow">
-            <feDropShadow dx="0" dy="3" stdDeviation="4" floodColor="#7C3AED" floodOpacity="0.25" />
-          </filter>
+          <filter id="peakGlow"><feGaussianBlur stdDeviation="5" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
+          <filter id="dropShadow"><feDropShadow dx="0" dy="3" stdDeviation="4" floodColor="#7C3AED" floodOpacity="0.25" /></filter>
         </defs>
 
-        {/* Grid */}
         {yTicks.map((t, i) => (
           <g key={i}>
-            <line x1={padL} x2={W - padR} y1={t.y} y2={t.y}
-              stroke={i === 0 ? '#E2E8F0' : '#F1F5F9'}
-              strokeWidth={i === 0 ? 1.5 : 1}
-              strokeDasharray={i === 0 ? 'none' : '5 4'} />
+            <line x1={padL} x2={W - padR} y1={t.y} y2={t.y} stroke={i === 0 ? '#E2E8F0' : '#F1F5F9'} strokeWidth={i === 0 ? 1.5 : 1} strokeDasharray={i === 0 ? 'none' : '5 4'} />
             <text x={padL - 8} y={t.y + 4} textAnchor="end" fontSize={10} fill="#94A3B8" fontWeight={600}>{t.val}</text>
           </g>
         ))}
 
-        {/* Area under trend line */}
         {barData.length > 1 && (() => {
           const area = `M${pts[0].x},${padT + chartH} ${pts.map(p => `L${p.x},${p.y}`).join(' ')} L${pts[pts.length - 1].x},${padT + chartH} Z`
           const line = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ')
@@ -127,32 +112,19 @@ function AttendanceChart({ barData, label, subtitle, isPayroll }) {
           )
         })()}
 
-        {/* Bars */}
         {barData.map((d, i) => {
-          const cx = padL + gap * i + gap / 2
-          const x = cx - barW / 2
-          const bh = animated ? Math.max(5, (d.value / maxVal) * chartH) : 5
-          const y = padT + chartH - bh
+          const cx    = padL + gap * i + gap / 2
+          const x     = cx - barW / 2
+          const bh    = animated ? Math.max(5, (d.value / maxVal) * chartH) : 5
+          const y     = padT + chartH - bh
           const isPeak = i === peakIdx
-          const isHov = hovered === i
-          const grad = isPeak ? 'url(#peakGrad)' : isHov ? 'url(#hovGrad)' : 'url(#normGrad)'
-
+          const isHov  = hovered === i
+          const grad   = isPeak ? 'url(#peakGrad)' : isHov ? 'url(#hovGrad)' : 'url(#normGrad)'
           return (
             <g key={i} onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)} style={{ cursor: 'pointer' }}>
-              {/* Soft shadow for peak */}
               {isPeak && <rect x={x + 3} y={y + 6} width={barW} height={bh} rx={9} fill="#7C3AED" opacity={0.18} style={{ filter: 'blur(8px)' }} />}
-
-              {/* Bar */}
-              <rect x={x} y={y} width={barW} height={bh} rx={9}
-                fill={grad}
-                filter={isPeak ? 'url(#dropShadow)' : undefined}
-                style={{ transition: 'all 0.55s cubic-bezier(0.34,1.56,0.64,1)', opacity: isHov || isPeak ? 1 : 0.85 }}
-              />
-
-              {/* Peak crown dot */}
+              <rect x={x} y={y} width={barW} height={bh} rx={9} fill={grad} filter={isPeak ? 'url(#dropShadow)' : undefined} style={{ transition: 'all 0.55s cubic-bezier(0.34,1.56,0.64,1)', opacity: isHov || isPeak ? 1 : 0.85 }} />
               {isPeak && <circle cx={cx} cy={y - 8} r={4} fill="#7C3AED" filter="url(#peakGlow)" />}
-
-              {/* Tooltip */}
               {(isHov || isPeak) && (
                 <g>
                   <rect x={cx - 24} y={y - 34} width={48} height={24} rx={7} fill={isPeak ? '#7C3AED' : '#1E293B'} />
@@ -162,18 +134,11 @@ function AttendanceChart({ barData, label, subtitle, isPayroll }) {
                   <polygon points={`${cx - 5},${y - 10} ${cx + 5},${y - 10} ${cx},${y - 3}`} fill={isPeak ? '#7C3AED' : '#1E293B'} />
                 </g>
               )}
-
-              {/* X-axis label */}
-              <text x={cx} y={H - 4} textAnchor="middle" fontSize={11}
-                fill={isPeak ? '#7C3AED' : '#64748B'}
-                fontWeight={isPeak ? 800 : 500}>
-                {d.name}
-              </text>
+              <text x={cx} y={H - 4} textAnchor="middle" fontSize={11} fill={isPeak ? '#7C3AED' : '#64748B'} fontWeight={isPeak ? 800 : 500}>{d.name}</text>
             </g>
           )
         })}
 
-        {/* Data point dots on trend line */}
         {pts.map((p, i) => {
           const isPeak = i === peakIdx
           return (
@@ -187,7 +152,6 @@ function AttendanceChart({ barData, label, subtitle, isPayroll }) {
         })}
       </svg>
 
-      {/* Summary row */}
       <div style={{ display: 'flex', gap: 24, paddingTop: 10, borderTop: '1px solid #F1F5F9', marginTop: 2 }}>
         <div>
           <div style={{ fontSize: 10, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Peak Period</div>
@@ -215,20 +179,36 @@ export default function Dashboard() {
   const [state, setState] = useState({
     employees: [], todayAtt: [], leaveRequests: [],
     summary: { totalEmployees: 0, presentToday: 0, pendingLeaves: 0, totalPayroll: 0, monthlyPayrollCost: 0, monthlyPayroll: [], departmentDistribution: [], attendanceTrend: [] },
-    checkedIn: false, checkInTime: null, loading: true
+    checkedIn: false, checkInTime: null, loading: true,
   })
 
-  const set = patch => setState(s => ({ ...s, ...patch }))
+  const [announcements, setAnnouncements]           = useState([])
+  const [showAnnouncementForm, setShowAnnouncementForm] = useState(false)
+  const [annTitle, setAnnTitle]                     = useState('')
+  const [annBody, setAnnBody]                       = useState('')
+
+  const isAdmin = user?.role === 'admin'
+  const set     = patch => setState(s => ({ ...s, ...patch }))
 
   useEffect(() => {
     if (!user) return
     const iv = setInterval(() => {
       const now = new Date()
       if (now.getHours() === 18 && now.getMinutes() === 0)
-        autoCheckOut().then(() => set({ checkedIn: false, checkInTime: null })).catch(() => { })
+        autoCheckOut().then(() => set({ checkedIn: false, checkInTime: null })).catch(() => {})
     }, 60000)
     return () => clearInterval(iv)
   }, [user])
+
+  const loadAnnouncements = useCallback(async () => {
+    try {
+      const res  = await fetch('http://localhost:5000/api/announcements', {
+        headers: { Authorization: `Bearer ${useAuthStore.getState().token}` },
+      })
+      const data = await res.json()
+      setAnnouncements(data.announcements || [])
+    } catch {}
+  }, [])
 
   const load = useCallback(async () => {
     set({ loading: true })
@@ -240,14 +220,14 @@ export default function Dashboard() {
       ])
       let summary = { totalEmployees: (emps || []).length, presentToday: 0, pendingLeaves: 0, totalPayroll: 0, monthlyPayrollCost: 0, monthlyPayroll: [], departmentDistribution: [], attendanceTrend: [] }
       if (hasPermission('reports', 'view')) {
-        try { summary = await fetchReportsSummary() } catch (_) { }
+        try { summary = await fetchReportsSummary() } catch (_) {}
       }
       const my = (att || []).find(a => a.user_id === user?.id)
       set({ employees: emps || [], todayAtt: att || [], leaveRequests: (leaves || []).slice(0, 5), summary, checkedIn: !!my?.check_in, checkInTime: my?.check_in || null, loading: false })
     } catch (e) { console.error(e); set({ loading: false }) }
   }, [user])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { load(); loadAnnouncements() }, [load, loadAnnouncements])
 
   const handleCheckIn = async () => {
     try {
@@ -271,6 +251,25 @@ export default function Dashboard() {
     } catch (e) { toast.error(e.message || 'Failed') }
   }
 
+  const postAnnouncement = async () => {
+    if (!annTitle.trim() || !annBody.trim()) return
+    try {
+      await fetch('http://localhost:5000/api/announcements', {
+        method:  'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization:  `Bearer ${useAuthStore.getState().token}`,
+        },
+        body: JSON.stringify({ title: annTitle, body: annBody }),
+      })
+      setAnnTitle('')
+      setAnnBody('')
+      setShowAnnouncementForm(false)
+      loadAnnouncements()
+      toast.success('Announcement posted!')
+    } catch { toast.error('Failed to post announcement') }
+  }
+
   const handleExportReport = () => {
     const rows = [
       ['Metric', 'Value'],
@@ -279,10 +278,10 @@ export default function Dashboard() {
       ['Pending Leaves', summary.pendingLeaves ?? leaveRequests.filter(l => l.status === 'pending').length],
       ['Monthly Payroll Cost', summary.monthlyPayrollCost || summary.totalPayroll || 0],
     ]
-    const csv = rows.map(r => r.join(',')).join('\n')
+    const csv  = rows.map(r => r.join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a'); a.href = url
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a'); a.href = url
     a.download = `empay-report-${new Date().toISOString().split('T')[0]}.csv`
     a.click(); URL.revokeObjectURL(url)
     toast.success('Report exported!')
@@ -301,14 +300,14 @@ export default function Dashboard() {
     ? summary.departmentDistribution.map((d, i) => ({ name: d.name || d.department, value: d.count || d.value || 0, color: PIE_COLORS[i % PIE_COLORS.length] }))
     : [{ name: 'General', value: 1, color: '#7C3AED' }]
 
-  const totalPie = pieData.reduce((s, d) => s + d.value, 0)
-  const nextPayroll = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)
+  const totalPie          = pieData.reduce((s, d) => s + d.value, 0)
+  const nextPayroll       = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)
   const monthlyPayrollCost = summary.monthlyPayrollCost || summary.totalPayroll || 0
-  const occupancyPct = summary.totalEmployees ? Math.round(((summary.presentToday ?? presentCount) / summary.totalEmployees) * 100) : 0
+  const occupancyPct      = summary.totalEmployees ? Math.round(((summary.presentToday ?? presentCount) / summary.totalEmployees) * 100) : 0
   const pendingLeavesCount = summary.pendingLeaves ?? leaveRequests.filter(l => l.status === 'pending').length
-  const budgetPct = monthlyPayrollCost > 0 ? Math.min(Math.round((monthlyPayrollCost / (monthlyPayrollCost * 1.09)) * 100), 100) : 0
-  const canApprove = hasPermission('time_off', 'approve')
-  const isPayroll = summary.monthlyPayroll?.length > 0 && !summary.attendanceTrend?.length
+  const budgetPct         = monthlyPayrollCost > 0 ? Math.min(Math.round((monthlyPayrollCost / (monthlyPayrollCost * 1.09)) * 100), 100) : 0
+  const canApprove        = hasPermission('time_off', 'approve')
+  const isPayroll         = summary.monthlyPayroll?.length > 0 && !summary.attendanceTrend?.length
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#F4F6FB', fontFamily: "'DM Sans', sans-serif" }}>
@@ -351,17 +350,38 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* Navigation Hub — As seen in mockup */}
+          <div className="nav-grid mb-10">
+            {[
+              { label: 'Employee Directory', icon: <Users className="w-8 h-8 text-indigo-600" />, path: '/employees' },
+              { label: 'Payroll Management', icon: <DollarSign className="w-8 h-8 text-emerald-600" />, path: '/payroll' },
+              { label: 'Attendance Tracking', icon: <Clock className="w-8 h-8 text-blue-600" />, path: '/attendance' },
+              { label: 'Leave Management', icon: <Calendar className="w-8 h-8 text-purple-600" />, path: '/time-off' },
+              { label: 'Performance Review', icon: <Award className="w-8 h-8 text-amber-600" />, path: '/dashboard' },
+              { label: 'Reports & Analytics', icon: <BarChart3 className="w-8 h-8 text-rose-600" />, path: '/reports' },
+              { label: 'Help & Support', icon: <Shield className="w-8 h-8 text-slate-600" />, path: '/settings' },
+              { label: 'System Settings', icon: <Key className="w-8 h-8 text-indigo-900" />, path: '/settings' },
+            ].map((item, i) => (
+              <motion.div
+                key={i}
+                whileHover={{ y: -5, boxShadow: '0 20px 40px rgba(0,0,0,0.08)' }}
+                onClick={() => navigate(item.path)}
+                className="nav-card"
+              >
+                <div className="p-4 bg-slate-50 rounded-2xl mb-2">
+                  {item.icon}
+                </div>
+                <span className="text-sm font-black text-slate-800 text-center uppercase tracking-wider">{item.label}</span>
+              </motion.div>
+            ))}
+          </div>
+
           {/* Stat Cards */}
           <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
-            <StatCard loading={loading} title="Total Employees" value={summary.totalEmployees || employees.length} icon="👥" badge="+4% vs LW" badgeColor="#10B981" />
-            <StatCard loading={loading} title="Present Today" value={summary.presentToday ?? presentCount} icon="👤" badge={`${occupancyPct}% Occupancy`} badgeColor="#3B82F6" />
-            <StatCard loading={loading} title="Pending Leaves" value={pendingLeavesCount} icon="📅"
-              badge={pendingLeavesCount > 0 ? 'Action Needed' : 'All Clear'}
-              badgeColor={pendingLeavesCount > 0 ? '#F59E0B' : '#10B981'} />
-            <StatCard loading={loading} title="Monthly Payroll Cost"
-              value={`₹${monthlyPayrollCost.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
-              icon="💰" badge={monthlyPayrollCost > 0 ? `Budget: ${budgetPct}%` : 'No data'}
-              badgeColor={budgetPct > 90 ? '#EF4444' : '#10B981'} />
+            <StatCard loading={loading} title="Total Employees"    value={summary.totalEmployees || employees.length}                                            icon="👥" badge="+4% vs LW"                                              badgeColor="#10B981" />
+            <StatCard loading={loading} title="Present Today"      value={summary.presentToday ?? presentCount}                                                  icon="👤" badge={`${occupancyPct}% Occupancy`}                            badgeColor="#3B82F6" />
+            <StatCard loading={loading} title="Pending Leaves"     value={pendingLeavesCount}                                                                    icon="📅" badge={pendingLeavesCount > 0 ? 'Action Needed' : 'All Clear'} badgeColor={pendingLeavesCount > 0 ? '#F59E0B' : '#10B981'} />
+            <StatCard loading={loading} title="Monthly Payroll Cost" value={`₹${monthlyPayrollCost.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}     icon="💰" badge={monthlyPayrollCost > 0 ? `Budget: ${budgetPct}%` : 'No data'} badgeColor={budgetPct > 90 ? '#EF4444' : '#10B981'} />
           </div>
 
           {/* Charts Row */}
@@ -408,6 +428,8 @@ export default function Dashboard() {
 
           {/* Bottom Row */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 16 }}>
+
+            {/* Leave Requests */}
             <div style={card}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <div style={{ fontSize: 18, fontWeight: 900, color: '#0F172A', letterSpacing: '-0.3px' }}>Recent Leave Requests</div>
@@ -429,11 +451,9 @@ export default function Dashboard() {
                       <td style={{ padding: '11px 8px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
                           <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg,#7C3AED,#A78BFA)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff', flexShrink: 0, overflow: 'hidden' }}>
-                            {req.profile_picture || req.profilePicture ? (
-                              <img src={req.profile_picture || req.profilePicture} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            ) : (
-                              (req.firstName || req.first_name || req.employee_name || '?')[0].toUpperCase()
-                            )}
+                            {req.profile_picture || req.profilePicture
+                              ? <img src={req.profile_picture || req.profilePicture} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              : (req.firstName || req.first_name || req.employee_name || '?')[0].toUpperCase()}
                           </div>
                           <div>
                             <div style={{ fontSize: 14, fontWeight: 800, color: '#0F172A' }}>{req.firstName || req.first_name} {req.lastName || req.last_name}</div>
@@ -456,7 +476,7 @@ export default function Dashboard() {
                         <td style={{ padding: '11px 8px' }}>
                           {req.status === 'pending' ? (
                             <div style={{ display: 'flex', gap: 6 }}>
-                              <button onClick={() => handleApprove(req.id, true)} style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid #D1FAE5', background: '#F0FDF4', color: '#10B981', fontSize: 14, cursor: 'pointer' }}>✓</button>
+                              <button onClick={() => handleApprove(req.id, true)}  style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid #D1FAE5', background: '#F0FDF4', color: '#10B981', fontSize: 14, cursor: 'pointer' }}>✓</button>
                               <button onClick={() => handleApprove(req.id, false)} style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid #FEE2E2', background: '#FFF5F5', color: '#EF4444', fontSize: 14, cursor: 'pointer' }}>✕</button>
                             </div>
                           ) : <span style={{ color: '#CBD5E1', fontSize: 16 }}>···</span>}
@@ -470,25 +490,66 @@ export default function Dashboard() {
               </table>
             </div>
 
+            {/* Right column */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={card}>
-                <div style={{ fontSize: 18, fontWeight: 900, color: '#0F172A', marginBottom: 14, letterSpacing: '-0.3px' }}>Quick Actions</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  {[
-                    { label: 'Add Employee', icon: '👤', color: '#7C3AED', bg: '#F5F3FF', path: '/employees', perm: ['employees', 'create'] },
-                    { label: 'Approve Leaves', icon: '✅', color: '#3B82F6', bg: '#EFF6FF', path: '/time-off', perm: ['time_off', 'approve'] },
-                    { label: 'Run Payroll', icon: '💳', color: '#10B981', bg: '#ECFDF5', path: '/payroll', perm: ['payroll', 'create'] },
-                    { label: 'View Reports', icon: '📊', color: '#475569', bg: '#F8FAFC', path: '/reports', perm: ['reports', 'view'] },
-                  ].filter(a => !a.perm || hasPermission(a.perm[0], a.perm[1])).map((a, i) => (
-                    <motion.button key={i} whileHover={{ scale: 1.05, y: -2 }} whileTap={{ scale: 0.97 }}
-                      onClick={() => navigate(a.path)}
-                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '16px 8px', borderRadius: 12, background: a.bg, border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: 13, color: a.color, minHeight: 82, fontFamily: 'inherit' }}>
-                      <span style={{ fontSize: 24 }}>{a.icon}</span>{a.label}
-                    </motion.button>
-                  ))}
+
+              {/* Notice Board — Re-styled from Announcements */}
+              <div className="notice-board">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+                      <Megaphone className="w-5 h-5" />
+                    </div>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: '#0F172A', letterSpacing: '-0.3px' }}>Notice Board</div>
+                  </div>
+                  {isAdmin && (
+                    <button
+                      onClick={() => setShowAnnouncementForm(f => !f)}
+                      style={{ fontSize: 12, fontWeight: 700, color: '#7C3AED', background: '#F5F3FF', border: '1px solid #EDE9FE', borderRadius: 8, padding: '5px 12px', cursor: 'pointer' }}
+                    >
+                      {showAnnouncementForm ? 'Cancel' : '+ New'}
+                    </button>
+                  )}
                 </div>
+
+                {showAnnouncementForm && (
+                  <div style={{ marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <input
+                      placeholder="Title"
+                      value={annTitle}
+                      onChange={e => setAnnTitle(e.target.value)}
+                      style={{ padding: '9px 12px', borderRadius: 8, border: '1.5px solid #E5E7EB', fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
+                    />
+                    <textarea
+                      placeholder="Write your announcement..."
+                      value={annBody}
+                      onChange={e => setAnnBody(e.target.value)}
+                      rows={3}
+                      style={{ padding: '9px 12px', borderRadius: 8, border: '1.5px solid #E5E7EB', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', outline: 'none' }}
+                    />
+                    <button onClick={postAnnouncement} style={{ ...btnPrimary, alignSelf: 'flex-end', padding: '7px 16px', fontSize: 12 }}>Post</button>
+                  </div>
+                )}
+
+                {announcements.length === 0 ? (
+                  <div style={{ color: '#9CA3AF', fontSize: 13, textAlign: 'center', padding: '20px 0' }}>No active notices.</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    {announcements.map(a => (
+                      <div key={a.id} style={{ background: '#fff', padding: 16, borderRadius: 16, border: '1px solid #F1F5F9', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                        <div style={{ fontSize: 14, fontWeight: 900, color: '#1F2937' }}>{a.title}</div>
+                        <div style={{ fontSize: 13, color: '#6B7280', marginTop: 4, lineHeight: 1.5 }}>{a.body}</div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 10, borderTop: '1px solid #F8FAFC' }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#7C3AED' }}>{a.author}</span>
+                          <span style={{ fontSize: 10, color: '#9CA3AF' }}>{new Date(a.created_at).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
+              {/* Upcoming Payroll */}
               <div style={{ borderRadius: 16, padding: '22px 24px', background: 'linear-gradient(135deg, #7C3AED 0%, #5B21B6 100%)', color: '#fff', position: 'relative', overflow: 'hidden' }}>
                 <div style={{ position: 'absolute', top: -30, right: -30, width: 130, height: 130, borderRadius: '50%', background: 'rgba(255,255,255,0.07)', pointerEvents: 'none' }} />
                 <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.14em', opacity: 0.7, marginBottom: 5 }}>UPCOMING PAYROLL</div>
@@ -504,8 +565,10 @@ export default function Dashboard() {
                   ))}
                 </div>
               </div>
+
             </div>
           </div>
+
         </main>
       </div>
       <style>{`@keyframes shimmer{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
