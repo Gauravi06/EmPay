@@ -285,7 +285,7 @@ const Login = () => {
             <div className="ep-field">
               <div className="ep-label-row">
                 <label className="ep-label">Password</label>
-                <a href="#" className="ep-forgot">Forgot password?</a>
+                <Link to="/forgot-password" size={17} className="ep-forgot">Forgot password?</Link>
               </div>
               <div className="ep-input-wrap">
                 <span className="ep-icon"><Lock size={17} /></span>

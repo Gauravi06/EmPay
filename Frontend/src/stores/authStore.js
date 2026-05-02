@@ -203,9 +203,12 @@ export const useAuthStore = create(
         return { success: true }
       },
 
-      resetPassword: async (loginId, empId) => {
+      resetPassword: async (loginId, empId, password = null) => {
         const { token } = get()
-        return await apiFetch(`/employees/${empId}/reset-password`, { method: 'POST' }, token)
+        return await apiFetch(`/employees/${empId}/reset-password`, { 
+          method: 'POST',
+          body: JSON.stringify({ password })
+        }, token)
       },
 
       updateUserRole: async (employeeId, newRole) => {
@@ -222,6 +225,16 @@ export const useAuthStore = create(
           return await apiFetch('/auth/change-password', {
             method: 'POST', body: JSON.stringify({ oldPassword, newPassword })
           }, token)
+        } catch (e) {
+          return { success: false, message: e.message }
+        }
+      },
+
+      forgotPassword: async (loginId, email) => {
+        try {
+          return await apiFetch('/auth/forgot-password', {
+            method: 'POST', body: JSON.stringify({ loginId, email })
+          })
         } catch (e) {
           return { success: false, message: e.message }
         }

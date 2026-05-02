@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Bell, Mail, Search, LogOut, User, ChevronDown } from 'lucide-react'
+import { Bell, Mail, Search, LogOut, User, ChevronDown, Sparkles } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -9,6 +9,8 @@ const Header = () => {
   const navigate = useNavigate()
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef(null)
+
+  const companyName = (() => { try { return localStorage.getItem('empay_company_name') } catch { return null } })()
 
   useEffect(() => {
     const handle = (e) => { if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setIsOpen(false) }
@@ -21,96 +23,132 @@ const Header = () => {
   const firstName = user?.first_name || user?.firstName || ''
   const lastName = user?.last_name || user?.lastName || ''
   const profilePicture = user?.profile_picture || user?.profilePicture || null
-  const roleLabel = { admin: 'Global Operations', hr_officer: 'HR Operations', payroll_officer: 'Payroll Operations', employee: 'Team Member' }[user?.role] || 'User'
+  const roleLabel = { 
+    admin: 'Global Operations', 
+    hr_officer: 'HR Operations', 
+    payroll_officer: 'Payroll Operations', 
+    employee: 'Team Member' 
+  }[user?.role] || 'User'
 
   return (
     <header style={{
       background: '#fff',
       borderBottom: '1px solid #F0F0F5',
-      height: 64,
+      height: 68,
       position: 'fixed',
       right: 0,
       top: 0,
-      left: 220,
+      left: 240, // Match new Sidebar width
       zIndex: 99,
       display: 'flex',
       alignItems: 'center',
-      padding: '0 28px',
-      gap: 16,
+      padding: '0 32px',
+      gap: 20,
     }}>
-      {/* Search */}
-      <div style={{ flex: 1, maxWidth: 420, position: 'relative' }}>
-        <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} />
+      {/* Search Bar — Premium Bold Style */}
+      <div style={{ flex: 1, maxWidth: 460, position: 'relative' }}>
+        <Search size={16} strokeWidth={2.5} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} />
         <input
-          placeholder="Search employees, payroll, or reports..."
+          placeholder="Search employees or reports..."
           style={{
-            width: '100%', padding: '9px 14px 9px 36px',
-            background: '#F8F8FC', border: '1.5px solid #EBEBF5',
-            borderRadius: 10, fontSize: 13, color: '#374151',
+            width: '100%', padding: '12px 16px 12px 48px',
+            background: '#F8F9FF', border: '2px solid #F0F0FB',
+            borderRadius: 14, fontSize: 14, fontWeight: 700, color: '#1E293B',
             outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit',
+            transition: 'all 0.2s ease',
           }}
-          onFocus={e => { e.target.style.borderColor = '#7C3AED'; e.target.style.background = '#fff' }}
-          onBlur={e => { e.target.style.borderColor = '#EBEBF5'; e.target.style.background = '#F8F8FC' }}
+          onFocus={e => { e.target.style.borderColor = '#7C3AED'; e.target.style.background = '#fff'; e.target.style.boxShadow = '0 0 0 4px rgba(124,58,237,0.1)' }}
+          onBlur={e => { e.target.style.borderColor = '#F0F0FB'; e.target.style.background = '#F8F9FF'; e.target.style.boxShadow = 'none' }}
         />
       </div>
 
       <div style={{ flex: 1 }} />
 
-      {/* Icons */}
-      <button style={iconBtn}>
-        <Bell size={18} color="#6B7280" />
-        <span style={{ position: 'absolute', top: 6, right: 6, width: 8, height: 8, background: '#7C3AED', borderRadius: '50%', border: '2px solid #fff' }} />
-      </button>
-      <button style={iconBtn}>
-        <Mail size={18} color="#6B7280" />
-      </button>
+      {/* Action Icons */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <button style={iconBtn}>
+          <Bell size={20} strokeWidth={2.2} color="#475569" />
+          <span style={{ position: 'absolute', top: 8, right: 8, width: 8, height: 8, background: '#7C3AED', borderRadius: '50%', border: '2px solid #fff' }} />
+        </button>
+        <button style={iconBtn}>
+          <Mail size={20} strokeWidth={2.2} color="#475569" />
+        </button>
+      </div>
 
-      {/* User */}
+      {/* Vertical Divider */}
+      <div style={{ width: 1, height: 32, background: '#F1F5F9' }} />
+
+      {/* User Dropdown — Bold & Premium */}
       <div style={{ position: 'relative' }} ref={dropdownRef}>
         <button
           onClick={() => setIsOpen(o => !o)}
-          style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 10, fontFamily: 'inherit' }}
+          style={{ 
+            display: 'flex', alignItems: 'center', gap: 14, 
+            background: isOpen ? '#F5F3FF' : 'none', 
+            border: 'none', cursor: 'pointer', padding: '6px 10px', 
+            borderRadius: 16, fontFamily: 'inherit', transition: 'all 0.2s ease'
+          }}
         >
-          <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#7C3AED,#A78BFA)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg,#7C3AED,#A78BFA)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, boxShadow: '0 4px 12px rgba(124,58,237,0.2)' }}>
             {profilePicture ? <img src={profilePicture} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (
-              <span style={{ color: '#fff', fontWeight: 700, fontSize: 13 }}>{firstName[0]}{lastName[0]}</span>
+              <span style={{ color: '#fff', fontWeight: 850, fontSize: 14 }}>{firstName[0]}{lastName[0]}</span>
             )}
           </div>
-          <div style={{ textAlign: 'left' }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{firstName} {lastName}</div>
-            <div style={{ fontSize: 11, color: '#9CA3AF' }}>{roleLabel}</div>
+          <div style={{ textAlign: 'left', display: 'none', md: 'block' }}>
+            <div style={{ fontSize: 14, fontWeight: 850, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 4 }}>
+              {firstName} {lastName}
+              {user?.role === 'admin' && <Sparkles size={12} className="text-amber-400 fill-amber-400" />}
+            </div>
+            <div style={{ fontSize: 11, color: '#64748B', fontWeight: 750, uppercase: true, letterSpacing: '0.05em' }}>{roleLabel}</div>
           </div>
-          <ChevronDown size={14} color="#9CA3AF" style={{ transition: 'transform 0.2s', transform: isOpen ? 'rotate(180deg)' : 'none' }} />
+          <ChevronDown size={16} strokeWidth={2.5} color="#94A3B8" style={{ transition: 'transform 0.2s', transform: isOpen ? 'rotate(180deg)' : 'none' }} />
         </button>
 
         <AnimatePresence>
           {isOpen && (
             <motion.div
-              initial={{ opacity: 0, y: -8, scale: 0.97 }}
+              initial={{ opacity: 0, y: 12, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -8, scale: 0.97 }}
-              transition={{ duration: 0.15 }}
+              exit={{ opacity: 0, y: 12, scale: 0.95 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
               style={{
-                position: 'absolute', right: 0, top: 'calc(100% + 8px)',
-                width: 210, background: '#fff', borderRadius: 14,
-                boxShadow: '0 8px 30px rgba(0,0,0,0.12)', border: '1px solid #F0F0F5',
+                position: 'absolute', right: 0, top: 'calc(100% + 12px)',
+                width: 240, background: '#fff', borderRadius: 20,
+                boxShadow: '0 20px 40px rgba(0,0,0,0.12)', border: '1px solid #F1F5F9',
                 zIndex: 200, overflow: 'hidden',
               }}
             >
-              <div style={{ padding: '14px 16px', borderBottom: '1px solid #F3F4F6' }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>{firstName} {lastName}</div>
-                <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2, textTransform: 'capitalize' }}>{(user?.role || '').replace(/_/g, ' ')}</div>
+              <div style={{ padding: '20px', background: 'linear-gradient(to bottom, #F5F3FF, #fff)', borderBottom: '1px solid #F1F5F9' }}>
+                <div style={{ fontSize: 15, fontWeight: 900, color: '#0F172A' }}>{firstName} {lastName}</div>
+                <div style={{ fontSize: 12, color: '#7C3AED', marginTop: 4, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{(user?.role || '').replace(/_/g, ' ')}</div>
               </div>
-              <Link to="/my-profile" onClick={() => setIsOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', textDecoration: 'none', color: '#374151', fontSize: 13, fontWeight: 500 }}
-                onMouseEnter={e => e.currentTarget.style.background = '#F9FAFB'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                <User size={15} color="#7C3AED" /> My Profile
-              </Link>
-              <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', width: '100%', background: 'none', border: 'none', color: '#EF4444', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
-                onMouseEnter={e => e.currentTarget.style.background = '#FEF2F2'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                <LogOut size={15} /> Log Out
-              </button>
+              
+              <div style={{ padding: '8px' }}>
+                <Link to="/my-profile" onClick={() => setIsOpen(false)} 
+                  style={{ 
+                    display: 'flex', alignItems: 'center', gap: 12, 
+                    padding: '12px 16px', textDecoration: 'none', 
+                    color: '#475569', fontSize: 14, fontWeight: 750,
+                    borderRadius: 12, transition: 'all 0.15s ease'
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#F8FAFC'; e.currentTarget.style.color = '#7C3AED' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#475569' }}>
+                  <User size={18} strokeWidth={2.2} /> My Profile
+                </Link>
+                
+                <button onClick={handleLogout} 
+                  style={{ 
+                    display: 'flex', alignItems: 'center', gap: 12, 
+                    padding: '12px 16px', width: '100%', background: 'none', 
+                    border: 'none', color: '#EF4444', fontSize: 14, 
+                    fontWeight: 850, cursor: 'pointer', fontFamily: 'inherit',
+                    borderRadius: 12, transition: 'all 0.15s ease'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#FEF2F2'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <LogOut size={18} strokeWidth={2.2} /> Log Out
+                </button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -120,9 +158,10 @@ const Header = () => {
 }
 
 const iconBtn = {
-  width: 38, height: 38, borderRadius: 10, border: '1.5px solid #EBEBF5',
-  background: '#F8F8FC', cursor: 'pointer', display: 'flex',
+  width: 42, height: 42, borderRadius: 12, border: '2px solid #F1F5F9',
+  background: '#fff', cursor: 'pointer', display: 'flex',
   alignItems: 'center', justifyContent: 'center', position: 'relative',
+  transition: 'all 0.2s ease',
 }
 
 export default Header

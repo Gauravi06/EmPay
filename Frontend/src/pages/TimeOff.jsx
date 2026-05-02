@@ -29,7 +29,8 @@ const TimeOff = () => {
     startDate: '', endDate: '', reason: '', type: TIME_OFF_TYPES.PAID, employeeId: null
   })
 
-  const isAdminOrHR = user?.role === ROLES.ADMIN || user?.role === ROLES.HR_OFFICER
+  const isAdmin = user?.role === ROLES.ADMIN
+  const isAdminOrHR = isAdmin || user?.role === ROLES.HR_OFFICER
   const canApprove = hasPermission(MODULES.TIME_OFF, PERMISSIONS.APPROVE)
 
   const loadData = useCallback(async () => {
@@ -60,6 +61,8 @@ const TimeOff = () => {
   const filteredRequests = baseRequests.filter(req => {
     if (filterStatus !== 'all' && req.status !== filterStatus) return false
     if (filterType !== 'all' && req.type !== filterType) return false
+    // Special request from user: Admin should only see others (HR, Payroll, Employee)
+    if (isAdmin && req.user_id === user?.id) return false
     return true
   })
 
@@ -163,12 +166,14 @@ const TimeOff = () => {
               <h1 className="text-2xl font-bold text-gray-800">Time Off Management</h1>
               <p className="text-gray-600">Request and manage leaves and absences</p>
             </div>
-            <button
-              onClick={() => setShowRequestForm(true)}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" /> New Request
-            </button>
+            {!isAdmin && (
+              <button
+                onClick={() => setShowRequestForm(true)}
+                className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" /> New Request
+              </button>
+            )}
           </div>
 
           {/* Balance Cards */}
@@ -331,9 +336,9 @@ const TimeOff = () => {
         </div>
       </main>
 
-      {/* Request Form Modal */}
+      {/* Request Form Modal - Only for non-admins */}
       <AnimatePresence>
-        {showRequestForm && (
+        {showRequestForm && !isAdmin && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
             onClick={() => setShowRequestForm(false)}>

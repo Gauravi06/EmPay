@@ -47,6 +47,17 @@ const EmployeeList = () => {
     return matchesSearch && matchesStatus
   })
 
+  const handleDelete = async (id) => {
+    try {
+      const { deleteEmployee } = useAuthStore.getState()
+      await deleteEmployee(id)
+      toast.success('Employee deleted successfully')
+      setEmployees(employees.filter(e => e.id !== id))
+    } catch (e) {
+      toast.error('Failed to delete employee')
+    }
+  }
+
   const handleAdd = async () => {
     if (!formData.firstName || !formData.lastName || !formData.email) {
       toast.error('First name, last name, and email are required')
@@ -124,7 +135,11 @@ const EmployeeList = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
               >
-                <EmployeeCard employee={employee} />
+                <EmployeeCard 
+                  employee={employee} 
+                  isAdmin={isAdmin} 
+                  onDelete={handleDelete} 
+                />
               </motion.div>
             ))}
           </div>

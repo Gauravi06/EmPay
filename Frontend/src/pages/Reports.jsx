@@ -2,29 +2,23 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useAuthStore, MODULES, PERMISSIONS, ROLES } from '../stores/authStore'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   FileText, TrendingUp, Users, Calendar, Download, Eye,
   BarChart3, PieChart as PieChartIcon, Printer, Search,
   DollarSign, Briefcase, MapPin, Hash, User, Building,
-  ChevronDown, ChevronUp
+  ChevronDown, ChevronUp, Sparkles, Target, Zap
 } from 'lucide-react'
 import {
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
+  BarChart, Bar, AreaChart, Area,
+  PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer
 } from 'recharts'
 import { format } from 'date-fns'
+
+const PIE_COLORS = ['#7C3AED', '#38BDF8', '#FB923C', '#10B981', '#F43F5E', '#F59E0B']
+const cardStyle = { background: '#fff', borderRadius: 24, padding: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', border: '1px solid #EBEBF5' }
 
 const Reports = () => {
   const { user, fetchEmployees, fetchPayrolls, hasPermission } = useAuthStore()
@@ -33,7 +27,6 @@ const Reports = () => {
   const [reportType, setReportType] = useState('salary')
   const [selectedEmployee, setSelectedEmployee] = useState(null)
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
-  const [showSalaryReport, setShowSalaryReport] = useState(false)
   const printRef = useRef()
 
   useEffect(() => {
@@ -45,17 +38,19 @@ const Reports = () => {
         })
         .catch(() => { })
     }
-  }, [user?.id])
+  }, [user?.id, fetchEmployees, fetchPayrolls])
 
   const isAdminOrPayroll = user?.role === ROLES.ADMIN || user?.role === ROLES.PAYROLL_OFFICER
 
   if (!isAdminOrPayroll) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <FileText className="w-16 h-16 text-red-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-red-600 mb-2">Access Denied</h1>
-          <p className="text-gray-600">You don't have permission to access this page.</p>
+      <div style={{ display: 'flex', minHeight: '100vh', background: '#F8FAFC', fontFamily: "'DM Sans', sans-serif", alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center', background: '#fff', padding: '48px', borderRadius: '32px', boxShadow: '0 20px 50px rgba(0,0,0,0.05)' }}>
+          <div style={{ width: 80, height: 80, borderRadius: 24, background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+            <FileText size={40} style={{ color: '#F43F5E' }} />
+          </div>
+          <div style={{ fontSize: 28, fontWeight: 900, color: '#0F172A', marginBottom: 8, letterSpacing: '-1px' }}>Access Restricted</div>
+          <div style={{ fontSize: 15, color: '#64748B', maxWidth: 300, margin: '0 auto' }}>Only administrators and payroll officers can access analytical reports.</div>
         </div>
       </div>
     )
@@ -100,7 +95,6 @@ const Reports = () => {
       return acc
     }, { basic: 0, hra: 0, pf: 0, net: 0 })
 
-    // Get latest payroll for current month
     const currentMonthPayroll = employeePayrolls.find(p => p.month === new Date().getMonth() + 1)
 
     return {
@@ -112,502 +106,339 @@ const Reports = () => {
 
   const handlePrint = () => {
     const printContent = printRef.current.innerHTML
-    const originalContent = document.body.innerHTML
-
     const printWindow = window.open('', '_blank')
     printWindow.document.write(`
-      <html>
-        <head>
-          <title>Salary Statement Report - ${selectedEmployee?.firstName || selectedEmployee?.first_name} ${selectedEmployee?.lastName || selectedEmployee?.last_name}</title>
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-              margin: 40px;
-              padding: 20px;
-            }
-            .header {
-              text-align: center;
-              margin-bottom: 30px;
-              border-bottom: 2px solid #2563eb;
-              padding-bottom: 20px;
-            }
-            .company-name {
-              font-size: 24px;
-              font-weight: bold;
-              color: #2563eb;
-            }
-            .report-title {
-              font-size: 18px;
-              margin-top: 10px;
-              color: #4b5563;
-            }
-            .employee-info {
-              background-color: #f3f4f6;
-              padding: 15px;
-              border-radius: 8px;
-              margin: 20px 0;
-              display: grid;
-              grid-template-columns: repeat(2, 1fr);
-              gap: 10px;
-            }
-            .info-row {
-              display: flex;
-              justify-content: space-between;
-              padding: 5px 0;
-            }
-            .info-label {
-              font-weight: 600;
-              color: #6b7280;
-            }
-            .table {
-              width: 100%;
-              border-collapse: collapse;
-              margin: 20px 0;
-            }
-            .table th {
-              background-color: #f3f4f6;
-              border: 1px solid #e5e7eb;
-              padding: 12px;
-              text-align: left;
-              font-weight: 600;
-            }
-            .table td {
-              border: 1px solid #e5e7eb;
-              padding: 10px;
-              text-align: right;
-            }
-            .table td:first-child {
-              text-align: left;
-            }
-            .total-row {
-              background-color: #fef3c7;
-              font-weight: bold;
-            }
-            .footer {
-              margin-top: 40px;
-              text-align: center;
-              font-size: 12px;
-              color: #6b7280;
-              border-top: 1px solid #e5e7eb;
-              padding-top: 20px;
-            }
-            @media print {
-              body {
-                margin: 0;
-                padding: 20px;
-              }
-              button {
-                display: none;
-              }
-            }
-          </style>
-        </head>
-        <body>
-          ${printContent}
-          <button onclick="window.print()" style="margin-top: 20px; padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 5px; cursor: pointer;">Print Report</button>
-        </body>
-      </html>
-    `)
+      <html><head><title>Report - ${selectedEmployee?.firstName} ${selectedEmployee?.lastName}</title>
+      <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+        body{font-family:'Inter', sans-serif;margin:60px;color:#1e293b}
+        .header{text-align:center;margin-bottom:40px;border-bottom:2px solid #7c3aed;padding-bottom:20px}
+        h1{color:#7c3aed;font-weight:900;margin:0;font-size:32px;letter-spacing:-1px}
+        .info-grid{display:grid;grid-template-columns:repeat(3, 1fr);gap:20px;margin:30px 0;background:#f8fafc;padding:25px;border-radius:15px}
+        .label{font-size:10px;font-weight:800;color:#94a3b8;text-transform:uppercase}
+        .value{font-weight:700;color:#0f172a;font-size:15px;margin-top:4px}
+        table{width:100%;border-collapse:collapse;margin:30px 0}
+        th,td{padding:12px;text-align:left;border-bottom:1px solid #f1f5f9}
+        th{background:#f1f5f9;font-weight:800;color:#64748b;font-size:11px}
+        .right{text-align:right}
+        .total-row{background:#fffbeb;font-weight:900;color:#0f172a}
+        .footer{text-align:center;font-size:11px;color:#94a3b8;margin-top:60px;border-top:1px solid #f1f5f9;padding-top:20px}
+        @media print{button{display:none}}
+      </style></head><body>${printContent}
+      <button onclick="window.print()" style="padding:12px 24px;background:#7c3aed;color:white;border:none;border-radius:10px;cursor:pointer;font-weight:bold;margin:20px auto;display:block">Print Analysis</button>
+      </body></html>`)
     printWindow.document.close()
   }
 
   const payrollData = getEmployeePayrollData()
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#F8FAFC', fontFamily: "'DM Sans', sans-serif" }}>
       <Sidebar />
-      <Header />
+      <div style={{ flex: 1, marginLeft: 240, transition: 'margin-left 0.3s' }}>
+        <Header />
+        <main style={{ padding: '96px 32px 40px' }}>
 
-      <main className="pt-16 p-6" style={{ marginLeft: 220 }}>
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-6">
+          {/* Page Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
             <div>
-              <h1 className="text-2xl font-bold text-gray-800">Reports & Analytics</h1>
-              <p className="text-gray-600">View comprehensive reports and insights</p>
+              <motion.h1 initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
+                style={{ fontSize: 36, fontWeight: 900, color: '#0F172A', margin: 0, letterSpacing: '-1.5px' }}>
+                Reports & Analytics
+              </motion.h1>
+              <p style={{ margin: '8px 0 0', color: '#64748B', fontSize: 16, fontWeight: 500 }}>Advanced organizational data visualization</p>
+            </div>
+            <div style={{ display: 'flex', gap: 12 }}>
+               <div style={{ width: 48, height: 48, borderRadius: 16, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', color: '#7C3AED' }}><Zap size={20}/></div>
+               <div style={{ width: 48, height: 48, borderRadius: 16, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', color: '#10B981' }}><Target size={20}/></div>
             </div>
           </div>
 
-          {/* Report Type Selector */}
-          <div className="bg-white/70 backdrop-blur-xl border border-white rounded-2xl shadow-sm p-5 mb-8">
-            <div className="flex flex-wrap gap-4">
-              {[
-                { id: 'salary', label: 'Salary Statement Report', icon: DollarSign },
-                { id: 'attendance', label: 'Attendance Report', icon: Calendar },
-                { id: 'payroll', label: 'Payroll Report', icon: TrendingUp },
-                { id: 'department', label: 'Department Report', icon: BarChart3 }
-              ].map((type) => (
-                <button
-                  key={type.id}
-                  onClick={() => setReportType(type.id)}
-                  className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${reportType === type.id
-                      ? 'bg-primary-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                >
-                  <type.icon className="w-4 h-4" />
-                  {type.label}
-                </button>
-              ))}
-            </div>
+          {/* Report Type Selector — Premium Tabs */}
+          <div style={{ ...cardStyle, marginBottom: 32, display: 'flex', gap: 12, padding: '12px' }}>
+            {[
+              { id: 'salary', label: 'Salary Statement', icon: DollarSign, color: '#7C3AED' },
+              { id: 'attendance', label: 'Attendance', icon: Calendar, color: '#10B981' },
+              { id: 'payroll', label: 'Payroll', icon: TrendingUp, color: '#3B82F6' },
+              { id: 'department', label: 'Department', icon: BarChart3, color: '#F59E0B' }
+            ].map((type) => (
+              <motion.button key={type.id} whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }}
+                onClick={() => setReportType(type.id)}
+                style={{
+                  flex: 1, padding: '12px 20px', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                  border: 'none', background: reportType === type.id ? type.color : 'transparent',
+                  color: reportType === type.id ? '#fff' : '#64748B',
+                  fontWeight: 800, fontSize: 14, cursor: 'pointer', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                }}
+              >
+                <type.icon size={18} />
+                {type.label}
+              </motion.button>
+            ))}
           </div>
 
-          {/* Salary Statement Report */}
-          {reportType === 'salary' && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-6"
-            >
-              {/* Selection Panel */}
-              <div className="bg-white/70 backdrop-blur-xl border border-white rounded-2xl shadow-sm p-6 mb-6">
-                <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <FileText className="w-5 h-5" />
-                  Salary Statement Report
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1 ml-1">Employee Name</label>
-                    <select
-                      value={selectedEmployee?.id || ''}
-                      onChange={(e) => setSelectedEmployee(employees.find(emp => emp.id === parseInt(e.target.value)))}
-                      className="w-full px-4 py-2.5 border-0 bg-white shadow-sm rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 cursor-pointer hover:shadow-md transition-shadow"
-                    >
-                      <option value="">Select Employee</option>
-                      {employees.map(emp => (
-                        <option key={emp.id} value={emp.id}>{emp.firstName || emp.first_name} {emp.lastName || emp.last_name} ({emp.loginId || emp.login_id})</option>
-                      ))}
-                    </select>
+          {/* Report Sections */}
+          <AnimatePresence mode="wait">
+            
+            {/* 1. Salary Statement Report */}
+            {reportType === 'salary' && (
+              <motion.div key="salary" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+                <div style={{ ...cardStyle, marginBottom: 24 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 12, background: '#F5F3FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#7C3AED' }}><FileText size={20}/></div>
+                    <span style={{ fontSize: 20, fontWeight: 900, color: '#0F172A', letterSpacing: '-0.5px' }}>Salary Statement Analysis</span>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1 ml-1">Year</label>
-                    <select
-                      value={selectedYear}
-                      onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                      className="w-full px-4 py-2.5 border-0 bg-white shadow-sm rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 cursor-pointer hover:shadow-md transition-shadow"
-                    >
-                      {[2024, 2025, 2026].map(y => (
-                        <option key={y} value={y}>{y}</option>
-                      ))}
-                    </select>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 10, fontWeight: 800, color: '#94A3B8', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Target Employee</label>
+                      <select value={selectedEmployee?.id || ''}
+                        onChange={(e) => setSelectedEmployee(employees.find(emp => emp.id === parseInt(e.target.value)))}
+                        style={{ width: '100%', padding: '14px 18px', borderRadius: 16, border: '1.5px solid #E2E8F0', background: '#fff', fontSize: 14, fontWeight: 700, color: '#1E293B', outline: 'none' }}>
+                        <option value="">Select an employee...</option>
+                        {employees.map(emp => (
+                          <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName} ({emp.loginId})</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 10, fontWeight: 800, color: '#94A3B8', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Fiscal Year</label>
+                      <select value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                        style={{ width: '100%', padding: '14px 18px', borderRadius: 16, border: '1.5px solid #E2E8F0', background: '#fff', fontSize: 14, fontWeight: 700, color: '#1E293B', outline: 'none' }}>
+                        {[2024, 2025, 2026].map(y => (<option key={y} value={y}>{y}</option>))}
+                      </select>
+                    </div>
                   </div>
+                  {selectedEmployee && payrollData && (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <button onClick={handlePrint}
+                        style={{ padding: '12px 24px', borderRadius: 14, border: 'none', background: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)', color: '#fff', fontWeight: 800, fontSize: 14, cursor: 'pointer', boxShadow: '0 8px 16px rgba(124,58,237,0.2)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Printer size={16} /> Print Full Analysis
+                      </button>
+                    </div>
+                  )}
                 </div>
 
-                {selectedEmployee && payrollData && (
-                  <div className="flex justify-end">
-                    <button
-                      onClick={handlePrint}
-                      className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2"
-                    >
-                      <Printer className="w-4 h-4" />
-                      Print Report
-                    </button>
+                {selectedEmployee && payrollData ? (
+                  <div ref={printRef} style={cardStyle}>
+                    {/* Branded Header */}
+                    <div style={{ textAlign: 'center', paddingBottom: 24, borderBottom: '2px solid #F1F5F9', marginBottom: 32 }}>
+                      <div style={{ fontSize: 32, fontWeight: 900, color: '#7C3AED', letterSpacing: '-1.5px' }}>EmPay</div>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: '#475569', marginTop: 6 }}>Annual Salary Statement Report</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#94A3B8', marginTop: 4 }}>Period: January — December {selectedYear}</div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24, marginBottom: 32, padding: 32, background: '#F8FAFC', borderRadius: 24, border: '1px solid #EBEBF5' }}>
+                      <ReportInfo label="Member Name" val={`${selectedEmployee.firstName} ${selectedEmployee.lastName}`} />
+                      <ReportInfo label="Employee Code" val={selectedEmployee.loginId} />
+                      <ReportInfo label="Designation" val={selectedEmployee.role?.replace('_', ' ') || 'Employee'} />
+                      <ReportInfo label="Department" val={selectedEmployee.department || 'General'} />
+                      <ReportInfo label="Joining Date" val={selectedEmployee.joiningDate} />
+                      <ReportInfo label="Fiscal Cycle" val={`${selectedYear}`} />
+                    </div>
+
+                    <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 32 }}>
+                      <thead>
+                        <tr style={{ background: '#F1F5F9' }}>
+                          <th style={{ padding: 16, textAlign: 'left', fontSize: 11, fontWeight: 800, color: '#64748B', textTransform: 'uppercase' }}>Salary Components</th>
+                          <th style={{ padding: 16, textAlign: 'right', fontSize: 11, fontWeight: 800, color: '#64748B', textTransform: 'uppercase' }}>Current Monthly (₹)</th>
+                          <th style={{ padding: 16, textAlign: 'right', fontSize: 11, fontWeight: 800, color: '#64748B', textTransform: 'uppercase' }}>Yearly Cumulative (₹)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <SectionLabel label="Earnings" color="#10B981" />
+                        <ReportRow name="Basic Salary" m={payrollData.currentMonthPayroll?.basic_salary} y={payrollData.yearlyTotals.basic} />
+                        <ReportRow name="House Rent Allowance" m={payrollData.currentMonthPayroll?.house_rent_allowance} y={payrollData.yearlyTotals.hra} />
+                        <ReportRow name="Standard Allowance" m={payrollData.currentMonthPayroll?.standard_allowance} y={(payrollData.currentMonthPayroll?.standard_allowance || 0) * 12} />
+                        <ReportRow name="Performance Bonus" m={payrollData.currentMonthPayroll?.performance_bonus} y={(payrollData.currentMonthPayroll?.performance_bonus || 0) * 12} />
+                        
+                        <SectionLabel label="Deductions" color="#F43F5E" />
+                        <ReportRow name="PF (Employee)" m={payrollData.currentMonthPayroll?.pf_employee} y={payrollData.yearlyTotals.pf} isDed />
+                        <ReportRow name="Professional Tax" m={payrollData.currentMonthPayroll?.professional_tax} y={(payrollData.currentMonthPayroll?.professional_tax || 0) * 12} isDed />
+                        <ReportRow name="TDS Deduction" m={payrollData.currentMonthPayroll?.tds} y={(payrollData.currentMonthPayroll?.tds || 0) * 12} isDed />
+                        
+                        <tr style={{ background: '#FFFBEB', borderTop: '2px solid #FDE68A' }}>
+                          <td style={{ padding: 20, fontSize: 16, fontWeight: 900, color: '#0F172A' }}>Fiscal Net Pay</td>
+                          <td style={{ padding: 20, fontSize: 16, fontWeight: 900, color: '#7C3AED', textAlign: 'right' }}>₹{(payrollData.currentMonthPayroll?.net_pay || 0).toLocaleString()}</td>
+                          <td style={{ padding: 20, fontSize: 16, fontWeight: 900, color: '#7C3AED', textAlign: 'right' }}>₹{payrollData.yearlyTotals.net.toLocaleString()}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                    <div style={{ marginTop: 24, textAlign: 'center', fontSize: 11, color: '#94A3B8', paddingTop: 20, borderTop: '1px solid #F1F5F9' }}>
+                      <p>Computer generated analysis. No physical signature required.</p>
+                      <p>© 2024 EmPay Intelligence. Generated: {new Date().toLocaleString()}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ ...cardStyle, padding: 80, textAlign: 'center' }}>
+                    <div style={{ width: 80, height: 80, borderRadius: 24, background: '#F8FAFC', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                      <Search size={40} style={{ color: '#D1D5DB' }} />
+                    </div>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: '#64748B' }}>Ready for Selection</div>
+                    <p style={{ fontSize: 14, color: '#94A3B8', marginTop: 8 }}>Select an employee above to generate their detailed fiscal year report.</p>
                   </div>
                 )}
-              </div>
+              </motion.div>
+            )}
 
-              {/* Report Content - Printable Area */}
-              {selectedEmployee && payrollData && (
-                <div ref={printRef}>
-                  <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                    {/* Header */}
-                    <div className="text-center py-8 border-b">
-                      <h1 className="text-2xl font-bold text-primary-600">Employee Management System</h1>
-                      <p className="text-lg text-gray-600 mt-2">Salary Statement Report</p>
-                      <p className="text-sm text-gray-500">{selectedYear}</p>
+            {/* 2. Attendance Trends */}
+            {reportType === 'attendance' && (
+              <motion.div key="attendance" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
+                <div style={{ ...cardStyle, position: 'relative', overflow: 'hidden' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+                    <div>
+                      <div style={{ fontSize: 20, fontWeight: 900, color: '#0F172A', letterSpacing: '-0.5px' }}>Attendance Dynamics</div>
+                      <div style={{ fontSize: 13, color: '#94A3B8', marginTop: 4, fontWeight: 500 }}>Global monthly attendance tracking</div>
                     </div>
-
-                    {/* Employee Information */}
-                    <div className="p-6 bg-gray-50">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-sm text-gray-500">Employee Name</p>
-                          <p className="font-semibold text-gray-800">{selectedEmployee.firstName || selectedEmployee.first_name} {selectedEmployee.lastName || selectedEmployee.last_name}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-500">Employee Code</p>
-                          <p className="font-semibold text-gray-800">{selectedEmployee.loginId}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-500">Designation</p>
-                          <p className="font-semibold text-gray-800">{selectedEmployee.role?.replace('_', ' ') || 'Employee'}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-500">Department</p>
-                          <p className="font-semibold text-gray-800">{selectedEmployee.department || 'General'}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-500">Date of Joining</p>
-                          <p className="font-semibold text-gray-800">{selectedEmployee.joiningDate}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-500">Salary Effective From</p>
-                          <p className="font-semibold text-gray-800">{selectedEmployee.joiningDate}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Salary Statement Table */}
-                    <div className="p-6">
-                      <table className="w-full border-collapse">
-                        <thead>
-                          <tr className="bg-gray-100">
-                            <th className="p-3 text-left border">Salary Components</th>
-                            <th className="p-3 text-right border">Monthly Amount (₹)</th>
-                            <th className="p-3 text-right border">Yearly Amount (₹)</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr className="bg-gray-50">
-                            <td colSpan="3" className="p-2 font-semibold border">Earnings</td>
-                          </tr>
-                          <tr>
-                            <td className="p-3 border">Basic Salary</td>
-                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.basic_salary || 0).toFixed(2)}</td>
-                            <td className="p-3 text-right border">₹{payrollData.yearlyTotals.basic.toFixed(2)}</td>
-                          </tr>
-                          <tr>
-                            <td className="p-3 border">House Rent Allowance (HRA)</td>
-                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.house_rent_allowance || 0).toFixed(2)}</td>
-                            <td className="p-3 text-right border">₹{payrollData.yearlyTotals.hra.toFixed(2)}</td>
-                          </tr>
-                          <tr>
-                            <td className="p-3 border">Standard Allowance</td>
-                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.standard_allowance || 0).toFixed(2)}</td>
-                            <td className="p-3 text-right border">₹{((payrollData.currentMonthPayroll?.standard_allowance || 0) * 12).toFixed(2)}</td>
-                          </tr>
-                          <tr>
-                            <td className="p-3 border">Performance Bonus</td>
-                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.performance_bonus || 0).toFixed(2)}</td>
-                            <td className="p-3 text-right border">₹{((payrollData.currentMonthPayroll?.performance_bonus || 0) * 12).toFixed(2)}</td>
-                          </tr>
-                          <tr>
-                            <td className="p-3 border">Leave Travel Allowance</td>
-                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.leave_travel_allowance || 0).toFixed(2)}</td>
-                            <td className="p-3 text-right border">₹{((payrollData.currentMonthPayroll?.leave_travel_allowance || 0) * 12).toFixed(2)}</td>
-                          </tr>
-
-                          <tr className="bg-gray-50">
-                            <td colSpan="3" className="p-2 font-semibold border">Deductions</td>
-                          </tr>
-                          <tr>
-                            <td className="p-3 border">PF (Employee Contribution)</td>
-                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.pf_employee || 0).toFixed(2)}</td>
-                            <td className="p-3 text-right border">₹{payrollData.yearlyTotals.pf.toFixed(2)}</td>
-                          </tr>
-                          <tr>
-                            <td className="p-3 border">Professional Tax</td>
-                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.professional_tax || 0).toFixed(2)}</td>
-                            <td className="p-3 text-right border">₹{((payrollData.currentMonthPayroll?.professional_tax || 0) * 12).toFixed(2)}</td>
-                          </tr>
-                          <tr>
-                            <td className="p-3 border">TDS Deduction</td>
-                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.tds || 0).toFixed(2)}</td>
-                            <td className="p-3 text-right border">₹{((payrollData.currentMonthPayroll?.tds || 0) * 12).toFixed(2)}</td>
-                          </tr>
-
-                          <tr className="total-row bg-yellow-50 font-bold">
-                            <td className="p-3 border">Net Salary</td>
-                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.net_pay || 0).toFixed(2)}</td>
-                            <td className="p-3 text-right border">₹{payrollData.yearlyTotals.net.toFixed(2)}</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Monthly Breakdown */}
-                    <div className="p-6 border-t">
-                      <h4 className="font-semibold text-gray-800 mb-4">Monthly Salary Breakdown - {selectedYear}</h4>
-                      <div className="overflow-x-auto">
-                        <table className="w-full border-collapse">
-                          <thead>
-                            <tr className="bg-gray-100">
-                              <th className="p-2 border text-left">Month</th>
-                              <th className="p-2 border text-right">Basic</th>
-                              <th className="p-2 border text-right">HRA</th>
-                              <th className="p-2 border text-right">PF</th>
-                              <th className="p-2 border text-right">Net Salary</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {payrollData.monthlyData.map((month, index) => (
-                              <tr key={index} className="hover:bg-gray-50">
-                                <td className="p-2 border">{month.month}</td>
-                                <td className="p-2 border text-right">₹{month.basic.toFixed(2)}</td>
-                                <td className="p-2 border text-right">₹{month.hra.toFixed(2)}</td>
-                                <td className="p-2 border text-right">₹{month.pf.toFixed(2)}</td>
-                                <td className="p-2 border text-right font-medium">₹{month.net.toFixed(2)}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                          <tfoot>
-                            <tr className="bg-gray-100 font-bold">
-                              <td className="p-2 border">Total</td>
-                              <td className="p-2 border text-right">₹{payrollData.yearlyTotals.basic.toFixed(2)}</td>
-                              <td className="p-2 border text-right">₹{payrollData.yearlyTotals.hra.toFixed(2)}</td>
-                              <td className="p-2 border text-right">₹{payrollData.yearlyTotals.pf.toFixed(2)}</td>
-                              <td className="p-2 border text-right">₹{payrollData.yearlyTotals.net.toFixed(2)}</td>
-                            </tr>
-                          </tfoot>
-                        </table>
-                      </div>
-                    </div>
-
-                    {/* Footer */}
-                    <div className="text-center py-6 text-xs text-gray-400 border-t">
-                      <p>This is a computer generated report. No signature required.</p>
-                      <p>Generated on: {new Date().toLocaleString()}</p>
+                    <div style={{ display: 'flex', gap: 16 }}>
+                      {[{ l: 'Present', c: '#10B981' }, { l: 'Absent', c: '#F59E0B' }, { l: 'Leave', c: '#7C3AED' }].map(x => (
+                        <span key={x.l} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 800, color: x.c, textTransform: 'uppercase' }}>
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: x.c }} />{x.l}
+                        </span>
+                      ))}
                     </div>
                   </div>
+                  <ResponsiveContainer width="100%" height={320}>
+                    <AreaChart data={attendanceData}>
+                      <defs>
+                        <linearGradient id="pGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#10B981" stopOpacity={0.2} /><stop offset="100%" stopColor="#10B981" stopOpacity={0} /></linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="6 6" stroke="#F1F5F9" vertical={false} />
+                      <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 800, fill: '#94A3B8' }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 800, fill: '#94A3B8' }} />
+                      <Tooltip contentStyle={{ borderRadius: 16, border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', fontSize: 12, fontWeight: 800 }} />
+                      <Area type="monotone" dataKey="present" stroke="#10B981" strokeWidth={3} fill="url(#pGrad)" />
+                      <Area type="monotone" dataKey="absent" stroke="#F59E0B" strokeWidth={2} fill="transparent" />
+                      <Area type="monotone" dataKey="leave" stroke="#7C3AED" strokeWidth={2} fill="transparent" />
+                    </AreaChart>
+                  </ResponsiveContainer>
                 </div>
-              )}
 
-              {!selectedEmployee && (
-                <div className="bg-white rounded-xl shadow-sm p-12 text-center">
-                  <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-600">Select an Employee</h3>
-                  <p className="text-sm text-gray-400 mt-1">
-                    Choose an employee and year to generate the salary statement report
-                  </p>
+                <div style={cardStyle}>
+                  <div style={{ fontSize: 19, fontWeight: 900, color: '#0F172A', marginBottom: 20, letterSpacing: '-0.3px' }}>Current Workforce Pulse</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+                    {employees.map((emp) => {
+                      const sc = emp.status === 'present' ? '#10B981' : emp.status === 'absent' ? '#F59E0B' : '#3B82F6'
+                      return (
+                        <div key={emp.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px', background: '#F8FAFC', borderRadius: 16, border: '1px solid #F1F5F9' }}>
+                          <div style={{ width: 10, height: 10, borderRadius: '50%', background: sc, boxShadow: `0 0 0 4px ${sc}15` }} />
+                          <div>
+                            <div style={{ fontSize: 14, fontWeight: 900, color: '#1E293B' }}>{emp.firstName}</div>
+                            <div style={{ fontSize: 10, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase' }}>{emp.status || 'Offline'}</div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
-              )}
-            </motion.div>
-          )}
+              </motion.div>
+            )}
 
-          {/* Attendance Report */}
-          {reportType === 'attendance' && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-6"
-            >
-              <div className="bg-white rounded-xl shadow-sm p-6">
-                <h3 className="font-semibold text-gray-800 mb-4">Monthly Attendance Trends</h3>
-                <ResponsiveContainer width="100%" height={400}>
-                  <LineChart data={attendanceData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Line type="monotone" dataKey="present" stroke="#10b981" name="Present" />
-                    <Line type="monotone" dataKey="absent" stroke="#f59e0b" name="Absent" />
-                    <Line type="monotone" dataKey="leave" stroke="#3b82f6" name="Leave" />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
+            {/* 3. Payroll Report */}
+            {reportType === 'payroll' && (
+              <motion.div key="payroll" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+                style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 24 }}>
+                <div style={cardStyle}>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: '#0F172A', letterSpacing: '-0.5px', marginBottom: 8 }}>Budgetary Distribution</div>
+                  <div style={{ fontSize: 13, color: '#94A3B8', marginBottom: 24, fontWeight: 500 }}>Month-wise presentation of salary cycle</div>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={attendanceData} barSize={24}>
+                      <defs>
+                        <linearGradient id="bGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#7C3AED" /><stop offset="100%" stopColor="#C4B5FD" /></linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="6 6" stroke="#F1F5F9" vertical={false} />
+                      <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 800, fill: '#94A3B8' }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 800, fill: '#94A3B8' }} />
+                      <Tooltip cursor={{ fill: '#F8FAFC' }} contentStyle={{ borderRadius: 16, border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', fontSize: 12, fontWeight: 800 }} />
+                      <Bar dataKey="present" fill="url(#bGrad)" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <SummaryCard label="Total Force" val={employees.length} icon={<Users/>} color="#7C3AED" />
+                  <SummaryCard label="Monthly Payroll" val={`₹${(employees.length * 50000).toLocaleString()}`} icon={<DollarSign/>} color="#10B981" />
+                  <SummaryCard label="Average Salary" val="₹50,000" icon={<TrendingUp/>} color="#3B82F6" />
+                </div>
+              </motion.div>
+            )}
 
-              <div className="bg-white rounded-xl shadow-sm p-6">
-                <h3 className="font-semibold text-gray-800 mb-4">Current Employee Status</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {employees.map((emp) => (
-                    <div key={emp.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div>
-                        <p className="font-medium text-gray-800">{emp.firstName || emp.first_name} {emp.lastName || emp.last_name}</p>
-                        <p className="text-sm text-gray-500">{emp.loginId || emp.login_id}</p>
+            {/* 4. Department Analytics */}
+            {reportType === 'department' && (
+              <motion.div key="department" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+                style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 24 }}>
+                <div style={cardStyle}>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: '#0F172A', letterSpacing: '-0.5px', marginBottom: 8 }}>Department Performance</div>
+                  <div style={{ fontSize: 13, color: '#94A3B8', marginBottom: 24, fontWeight: 500 }}>Cross-department headcount & attendance mix</div>
+                  <ResponsiveContainer width="100%" height={320}>
+                    <BarChart data={departmentStats} barGap={12}>
+                      <CartesianGrid strokeDasharray="6 6" stroke="#F1F5F9" vertical={false} />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 800, fill: '#94A3B8' }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 800, fill: '#94A3B8' }} />
+                      <Tooltip contentStyle={{ borderRadius: 16, border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', fontSize: 12, fontWeight: 800 }} />
+                      <Bar dataKey="employees" fill="#7C3AED" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="attendance" fill="#10B981" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {departmentStats.map((dept) => (
+                    <div key={dept.name} style={{ ...cardStyle, padding: '20px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <span style={{ fontSize: 16, fontWeight: 900, color: '#1E293B' }}>{dept.name}</span>
+                        <span style={{ fontSize: 11, fontWeight: 900, color: '#7C3AED', background: '#F5F3FF', padding: '4px 10px', borderRadius: 8 }}>{dept.employees} Teams</span>
                       </div>
-                      <div className={`w-3 h-3 rounded-full ${emp.status === 'present' ? 'bg-green-500' :
-                          emp.status === 'absent' ? 'bg-yellow-500' :
-                            emp.status === 'leave' ? 'bg-blue-500' : 'bg-red-500'
-                        }`}></div>
+                      <div style={{ width: '100%', height: 6, background: '#F1F5F9', borderRadius: 10, marginBottom: 10, overflow: 'hidden' }}>
+                        <motion.div initial={{ width: 0 }} animate={{ width: `${dept.attendance}%` }} transition={{ duration: 1 }}
+                          style={{ height: '100%', background: 'linear-gradient(90deg, #7C3AED, #A78BFA)', borderRadius: 10 }} />
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 800, color: '#64748B', textTransform: 'uppercase' }}>
+                        <span style={{ color: '#10B981' }}>{dept.attendance}% Pres.</span>
+                        <span style={{ color: dept.turnover > 5 ? '#F43F5E' : '#94A3B8' }}>{dept.turnover}% Turnover</span>
+                      </div>
                     </div>
                   ))}
                 </div>
-              </div>
-            </motion.div>
-          )}
+              </motion.div>
+            )}
 
-          {/* Payroll Report */}
-          {reportType === 'payroll' && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-xl shadow-sm p-6"
-            >
-              <h3 className="font-semibold text-gray-800 mb-4">Payroll Summary</h3>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={attendanceData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
-                      <YAxis />
-                      <Tooltip />
-                      <Legend />
-                      <Bar dataKey="present" fill="#10b981" name="Present Days" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-                <div>
-                  <div className="space-y-3">
-                    <div className="flex justify-between p-3 bg-gray-50 rounded-lg">
-                      <span>Total Employees</span>
-                      <span className="font-semibold">{employees.length}</span>
-                    </div>
-                    <div className="flex justify-between p-3 bg-gray-50 rounded-lg">
-                      <span>Monthly Payroll</span>
-                      <span className="font-semibold">₹{(employees.length * 50000).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between p-3 bg-gray-50 rounded-lg">
-                      <span>Average Salary</span>
-                      <span className="font-semibold">₹50,000</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Department Report */}
-          {reportType === 'department' && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-xl shadow-sm p-6"
-            >
-              <h3 className="font-semibold text-gray-800 mb-4">Department Analytics</h3>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={departmentStats}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
-                      <Legend />
-                      <Bar dataKey="employees" fill="#3b82f6" name="Employees" />
-                      <Bar dataKey="attendance" fill="#10b981" name="Attendance %" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-                <div>
-                  <div className="space-y-3">
-                    {departmentStats.map((dept) => (
-                      <div key={dept.name} className="p-4 bg-gray-50 rounded-lg">
-                        <div className="flex justify-between mb-2">
-                          <span className="font-medium">{dept.name}</span>
-                          <span className="text-sm text-gray-600">{dept.employees} employees</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-primary-600 h-2 rounded-full"
-                            style={{ width: `${dept.attendance}%` }}
-                          ></div>
-                        </div>
-                        <div className="flex justify-between mt-2 text-sm">
-                          <span>Attendance: {dept.attendance}%</span>
-                          <span>Turnover: {dept.turnover}%</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </div>
-      </main>
+          </AnimatePresence>
+        </main>
+      </div>
     </div>
   )
 }
+
+const ReportInfo = ({ label, val }) => (
+  <div>
+    <div style={{ fontSize: 10, fontWeight: 900, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.12em' }}>{label}</div>
+    <div style={{ fontSize: 15, fontWeight: 900, color: '#0F172A', marginTop: 4 }}>{val}</div>
+  </div>
+)
+
+const SectionLabel = ({ label, color }) => (
+  <tr style={{ background: '#F8FAFC' }}>
+    <td colSpan="3" style={{ padding: '10px 16px', fontSize: 11, fontWeight: 900, color: color, textTransform: 'uppercase', letterSpacing: '0.15em' }}>{label}</td>
+  </tr>
+)
+
+const ReportRow = ({ name, m, y, isDed }) => (
+  <tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+    <td style={{ padding: '14px 16px', fontSize: 14, fontWeight: 700, color: '#334155' }}>{name}</td>
+    <td style={{ padding: '14px 16px', fontSize: 14, fontWeight: 800, color: isDed ? '#F43F5E' : '#10B981', textAlign: 'right' }}>₹{(m || 0).toLocaleString()}</td>
+    <td style={{ padding: '14px 16px', fontSize: 14, fontWeight: 800, color: isDed ? '#F43F5E' : '#10B981', textAlign: 'right' }}>₹{(y || 0).toLocaleString()}</td>
+  </tr>
+)
+
+const SummaryCard = ({ label, val, icon, color }) => (
+  <motion.div whileHover={{ scale: 1.02 }} style={{ ...cardStyle, display: 'flex', alignItems: 'center', gap: 16 }}>
+    <div style={{ width: 44, height: 44, borderRadius: 14, background: `${color}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: color }}>
+      {React.cloneElement(icon, { size: 20 })}
+    </div>
+    <div>
+      <div style={{ fontSize: 10, fontWeight: 900, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{label}</div>
+      <div style={{ fontSize: 24, fontWeight: 900, color: '#0F172A', letterSpacing: '-0.8px' }}>{val}</div>
+    </div>
+  </motion.div>
+)
 
 export default Reports

@@ -17,7 +17,8 @@ import {
   PhoneRounded as PhoneIcon, 
   CalendarTodayRounded as CalendarIcon,
   AirplanemodeActiveRounded as LeaveIcon,
-  FiberManualRecordRounded as StatusIcon
+  FiberManualRecordRounded as StatusIcon,
+  DeleteOutlineRounded as DeleteIcon
 } from '@mui/icons-material'
 
 const StatusIndicator = ({ status }) => {
@@ -42,7 +43,7 @@ const StatusIndicator = ({ status }) => {
   )
 }
 
-const EmployeeCard = ({ employee }) => {
+const EmployeeCard = ({ employee, isAdmin, onDelete }) => {
   const navigate = useNavigate()
 
   const firstName = employee.first_name || employee.firstName || ''
@@ -84,7 +85,38 @@ const EmployeeCard = ({ employee }) => {
             >
               {!profilePicture && `${firstName[0]}${lastName[0]}`}
             </Avatar>
-            <StatusIndicator status={status} />
+            <Stack direction="row" spacing={1} alignItems="center">
+              <StatusIndicator status={status} />
+              {isAdmin && (
+                <Tooltip title="Delete Employee">
+                  <Box 
+                    component="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (window.confirm(`Are you sure you want to delete ${firstName}?`)) {
+                        onDelete(employee.id);
+                      }
+                    }}
+                    sx={{ 
+                      p: 0.5, 
+                      borderRadius: 1, 
+                      border: 'none', 
+                      bgcolor: 'transparent',
+                      color: 'error.light',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      '&:hover': {
+                        bgcolor: 'error.light',
+                        color: 'white',
+                        transform: 'scale(1.1)'
+                      }
+                    }}
+                  >
+                    <DeleteIcon sx={{ fontSize: 20 }} />
+                  </Box>
+                </Tooltip>
+              )}
+            </Stack>
           </Stack>
 
           {/* Name and ID */}

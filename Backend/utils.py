@@ -74,3 +74,48 @@ def role_required(*roles):
             return f(current_user, *args, **kwargs)
         return decorated
     return decorator
+
+# --- EMAIL CONFIGURATION ---
+# Set TEST_MODE = False to use your real Gmail
+TEST_MODE = False 
+
+if TEST_MODE:
+    # Virtual Testing Inbox (Check at: https://ethereal.email/messages)
+    SMTP_SERVER = "smtp.ethereal.email"
+    SMTP_PORT = 587
+    SMTP_USER = "randy.gibson72@ethereal.email"
+    SMTP_PASS = "Fw7CDsYapz8eM6s9Hr"
+else:
+    # Real Gmail Mode
+    SMTP_SERVER = "smtp.gmail.com"
+    SMTP_PORT = 587
+    SMTP_USER = "swanu647@gmail.com"  # ✅ Your Gmail
+    SMTP_PASS = "jvqe iqbo qqyu urvl"  # ✅ Your New App Password
+# ---------------------------
+
+def send_email(to_email, subject, body):
+    """
+    Sends a real email notification via SMTP.
+    """
+    import smtplib
+    from email.mime.text import MIMEText
+    
+    # Always log to console for debugging
+    print(f"\n[ATTEMPTING EMAIL] To: {to_email} | Subject: {subject}")
+    
+    try:
+        msg = MIMEText(body)
+        msg['Subject'] = subject
+        msg['From'] = SMTP_USER
+        msg['To'] = to_email
+        
+        # Connect and send
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()  # Secure the connection
+            server.login(SMTP_USER, SMTP_PASS)
+            server.send_message(msg)
+            
+        print(f"[SUCCESS] Email sent to {to_email}\n")
+    except Exception as e:
+        print(f"[ERROR] Failed to send email: {e}")
+        print(f"Check your SMTP_USER and SMTP_PASS in Backend/utils.py\n")

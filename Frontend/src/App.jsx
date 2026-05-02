@@ -8,6 +8,7 @@ import EmployeeList from './pages/EmployeeList'
 import EmployeeProfile from './pages/EmployeeProfile'
 import MyProfile from './pages/MyProfile'
 import ChangePassword from './pages/ChangePassword'
+import ForgotPassword from './pages/ForgotPassword'
 import Attendance from './pages/Attendance'
 import TimeOff from './pages/TimeOff'
 import Payroll from './pages/Payroll'
@@ -90,6 +91,7 @@ function App() {
         {/* After login → always land on /dashboard */}
         <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" replace />} />
         <Route path="/signup" element={!isAuthenticated ? <SignUp /> : <Navigate to="/dashboard" replace />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} />
 
         {/* Protected Routes */}

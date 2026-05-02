@@ -233,9 +233,24 @@ def reset_password(current_user, employee_id):
     if current_user['role'] != ADMIN and current_user['id'] != employee_id:
         return jsonify({'error': 'Unauthorized'}), 403
     from werkzeug.security import generate_password_hash
-    new_password = 'Welcome@123'
+    data = request.json or {}
+    new_password = data.get('password', 'Welcome@123')
     conn = get_db()
+    user = conn.execute('SELECT * FROM users WHERE id = ?', (employee_id,)).fetchone()
+    
     conn.execute('UPDATE users SET password_hash = ? WHERE id = ?',
                  (generate_password_hash(new_password), employee_id))
     conn.commit()
+    
+    # Send email notification
+    from utils import send_email
+    try:
+        send_email(
+            user['email'],
+            "Password Reset Notification",
+            f"Hello {user['first_name']},\n\nYour EmPay account password has been reset by an administrator. Your temporary password is: {new_password}\n\nPlease log in and change your password immediately."
+        )
+    except Exception as e:
+        print(f"Mail error: {e}")
+        
     return jsonify({'message': 'Password reset', 'tempPassword': new_password})

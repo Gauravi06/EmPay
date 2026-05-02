@@ -27,10 +27,21 @@ def get_summary_report(current_user):
         'SELECT COUNT(*) FROM time_off WHERE status = "pending"'
     ).fetchone()[0]
 
+    # ── Total payroll ever paid (historical cumulative) ───────────────────────
     total_payroll_row = conn.execute(
         'SELECT COALESCE(SUM(net_salary), 0) FROM payroll WHERE status = "paid"'
     ).fetchone()
     total_payroll = total_payroll_row[0] if total_payroll_row else 0
+
+    # ── Monthly Payroll Cost: current month's payroll spend ───────────────────
+    # This is used for the 4th stat card on the Dashboard ("Monthly Payroll Cost")
+    monthly_payroll_cost_row = conn.execute('''
+        SELECT COALESCE(SUM(net_salary), 0)
+        FROM payroll
+        WHERE year  = CAST(strftime('%Y', 'now') AS INTEGER)
+          AND month = CAST(strftime('%m', 'now') AS INTEGER)
+    ''').fetchone()
+    monthly_payroll_cost = monthly_payroll_cost_row[0] if monthly_payroll_cost_row else 0
 
     # Monthly payroll aggregation (last 12 months)
     monthly_rows = conn.execute('''
@@ -68,13 +79,14 @@ def get_summary_report(current_user):
     attendance_trend = [dict(r) for r in att_trend]
 
     return jsonify({
-        'totalEmployees':        total_employees,
-        'presentToday':          present_today,
-        'pendingLeaves':         pending_leaves,
-        'totalPayroll':          total_payroll,
-        'monthlyPayroll':        monthly_payroll,
+        'totalEmployees':         total_employees,
+        'presentToday':           present_today,
+        'pendingLeaves':          pending_leaves,
+        'totalPayroll':           total_payroll,
+        'monthlyPayrollCost':     monthly_payroll_cost,   # ✅ new field for Dashboard card
+        'monthlyPayroll':         monthly_payroll,
         'departmentDistribution': department_distribution,
-        'attendanceTrend':       attendance_trend,
+        'attendanceTrend':        attendance_trend,
     })
 
 
