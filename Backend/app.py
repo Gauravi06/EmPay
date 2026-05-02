@@ -332,11 +332,17 @@ def login():
     user = row_to_dict(conn.execute(
         "SELECT * FROM users WHERE login_id=?", (login_id,)
     ).fetchone())
-    conn.close()
 
     if not user or not check_password_hash(user['password_hash'], password):
-        return jsonify({'success': False, 'message': 'Invalid credentials'}), 401
+        # Try finding by email if login_id didn't work
+        user = row_to_dict(conn.execute(
+            "SELECT * FROM users WHERE email=?", (login_id,)
+        ).fetchone())
+        if not user or not check_password_hash(user['password_hash'], password):
+            conn.close()
+            return jsonify({'success': False, 'message': 'Invalid credentials'}), 401
 
+    conn.close()
     token = create_access_token(identity=str(user['id']))
     return jsonify({
         'success': True,
@@ -346,34 +352,61 @@ def login():
 
 @app.route('/api/auth/signup', methods=['POST'])
 def signup():
-    """Admin-only first-time registration; open if no admin exists."""
+    """General registration for new users/companies."""
     data = request.json
+    year = datetime.now().year
     conn = get_db()
 
-    admin_exists = conn.execute("SELECT 1 FROM users WHERE role='admin'").fetchone()
-    if admin_exists:
+    # Check if user already exists
+    existing = conn.execute("SELECT 1 FROM users WHERE email=?", (data['email'],)).fetchone()
+    if existing:
         conn.close()
-        return jsonify({'error': 'Registration is closed. Contact your admin.'}), 403
+        return jsonify({'error': 'User with this email already exists'}), 400
 
-    year = datetime.now().year
-    login_id = f"ADMIN{year}001"
+    # Determine role: first user is admin, others are employees by default
+    admin_exists = conn.execute("SELECT 1 FROM users WHERE role='admin'").fetchone()
+    role = 'admin' if not admin_exists else data.get('role', 'employee')
+
+    # Generate Login ID
+    count = conn.execute("SELECT COUNT(*) FROM users WHERE joining_year=?", (year,)).fetchone()[0]
+    serial = str(count + 1).zfill(4)
+    prefix = 'AD' if role == 'admin' else 'IO'
+    name_code = (data['firstName'][:2] + data.get('lastName', 'XX')[:2]).upper()
+    login_id = f"{prefix}{name_code}{year}{serial}"
+
     pw_hash = generate_password_hash(data['password'])
+
+    default_components = json.dumps({
+        'basic': {'type': 'percentage', 'value': 50},
+        'hra': {'type': 'percentage_of_basic', 'value': 50},
+        'standardAllowance': {'type': 'fixed', 'value': 4167},
+        'performanceBonus': {'type': 'percentage', 'value': 8.33},
+        'leaveTravel': {'type': 'percentage', 'value': 5.333},
+        'pf': {'type': 'percentage', 'value': 12},
+        'professionalTax': {'type': 'fixed', 'value': 200}
+    })
+    default_time_off = json.dumps({
+        'paid': 0, 'sick': 0, 'casual': 0,
+        'vacation': 0, 'holiday': 0, 'unpaid': 0
+    })
 
     try:
         conn.execute("""
             INSERT INTO users (login_id, password_hash, first_name, last_name,
-            email, phone, role, joining_date, joining_year)
-            VALUES (?,?,?,?,?,?,?,?,?)
-        """, (login_id, pw_hash, data['firstName'], data['lastName'],
-              data['email'], data.get('phone', ''), 'admin',
-              datetime.now().strftime('%Y-%m-%d'), year))
+            email, phone, role, joining_date, joining_year, company_name,
+            salary_components, time_off_used)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+        """, (login_id, pw_hash, data['firstName'], data.get('lastName', ''),
+              data['email'], data.get('phone', ''), role,
+              datetime.now().strftime('%Y-%m-%d'), year, data.get('companyName', 'EmPay Corp'),
+              default_components, default_time_off))
         conn.commit()
     except sqlite3.IntegrityError as e:
         conn.close()
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'error': f"Integrity error: {str(e)}"}), 400
 
     conn.close()
-    return jsonify({'success': True, 'loginId': login_id})
+    return jsonify({'success': True, 'loginId': login_id, 'role': role})
 
 @app.route('/api/auth/me', methods=['GET'])
 @jwt_required()
