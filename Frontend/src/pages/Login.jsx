@@ -275,7 +275,7 @@ const Login = () => {
 
         <p className="ep-footer">
           New to EmPay?{' '}
-          <Link to="/signup" className="ep-footer-link">Request a demo</Link>
+          <Link to="/signup" className="ep-footer-link">Sign Up</Link>
         </p>
       </div>
     </>
