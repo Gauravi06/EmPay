@@ -5,25 +5,32 @@ import { UserCircle, Mail, Phone, Calendar } from 'lucide-react'
 
 const EmployeeCard = ({ employee }) => {
   const navigate = useNavigate()
-  
+
   const getStatusColor = () => {
-    switch(employee.status) {
+    switch (employee.status) {
       case 'present': return 'bg-green-500'
       case 'absent': return 'bg-yellow-500'
       case 'leave': return 'bg-blue-500'
-      default: return 'bg-red-500'
+      default: return 'bg-gray-400'
     }
   }
-  
+
   const getStatusText = () => {
-    switch(employee.status) {
+    switch (employee.status) {
       case 'present': return 'Present'
       case 'absent': return 'Absent'
       case 'leave': return 'On Leave'
-      default: return 'Unapproved Absence'
+      default: return employee.status || 'Unknown'
     }
   }
-  
+
+  // Support both camelCase (old) and snake_case (API)
+  const firstName = employee.first_name || employee.firstName || ''
+  const lastName = employee.last_name || employee.lastName || ''
+  const loginId = employee.login_id || employee.loginId || ''
+  const joiningDate = employee.joining_date || employee.joiningDate || ''
+  const profilePicture = employee.profile_picture || employee.profilePicture || null
+
   return (
     <motion.div
       whileHover={{ scale: 1.02 }}
@@ -35,35 +42,34 @@ const EmployeeCard = ({ employee }) => {
         <div className={`status-dot ${getStatusColor()}`}></div>
         <span className="text-xs text-gray-500">{getStatusText()}</span>
       </div>
-      
+
       <div className="flex items-center gap-4 mb-4">
         <div className="w-16 h-16 bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center">
-          {employee.profilePicture ? (
-            <img src={employee.profilePicture} alt="Profile" className="w-full h-full rounded-full object-cover" />
+          {profilePicture ? (
+            <img src={profilePicture} alt="Profile" className="w-full h-full rounded-full object-cover" />
           ) : (
             <UserCircle className="w-10 h-10 text-white" />
           )}
         </div>
         <div>
-          <h3 className="font-semibold text-lg text-gray-800">
-            {employee.firstName} {employee.lastName}
-          </h3>
-          <p className="text-sm text-gray-500">{employee.loginId}</p>
+          <h3 className="font-semibold text-lg text-gray-800">{firstName} {lastName}</h3>
+          <p className="text-sm text-gray-500">{loginId}</p>
+          <p className="text-xs text-primary-600 capitalize">{(employee.role || '').replace('_', ' ')}</p>
         </div>
       </div>
-      
+
       <div className="space-y-2">
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <Mail className="w-4 h-4" />
-          <span>{employee.email}</span>
+          <span className="truncate">{employee.email}</span>
         </div>
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <Phone className="w-4 h-4" />
-          <span>{employee.phone}</span>
+          <span>{employee.phone || 'N/A'}</span>
         </div>
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <Calendar className="w-4 h-4" />
-          <span>Joined: {employee.joiningDate}</span>
+          <span>Joined: {joiningDate}</span>
         </div>
       </div>
     </motion.div>

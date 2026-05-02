@@ -1,10 +1,10 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { useAuthStore, MODULES, PERMISSIONS, ROLES } from '../stores/authStore'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import { motion } from 'framer-motion'
-import { 
-  FileText, TrendingUp, Users, Calendar, Download, Eye, 
+import {
+  FileText, TrendingUp, Users, Calendar, Download, Eye,
   BarChart3, PieChart as PieChartIcon, Printer, Search,
   DollarSign, Briefcase, MapPin, Hash, User, Building,
   ChevronDown, ChevronUp
@@ -27,15 +27,28 @@ import {
 import { format } from 'date-fns'
 
 const Reports = () => {
-  const { user, employees, payrolls, hasPermission, ROLES } = useAuthStore()
+  const { user, fetchEmployees, fetchPayrolls, hasPermission } = useAuthStore()
+  const [employees, setEmployees] = useState([])
+  const [payrolls, setPayrolls] = useState([])
   const [reportType, setReportType] = useState('salary')
   const [selectedEmployee, setSelectedEmployee] = useState(null)
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   const [showSalaryReport, setShowSalaryReport] = useState(false)
   const printRef = useRef()
-  
+
+  useEffect(() => {
+    if (user) {
+      Promise.all([fetchEmployees(), fetchPayrolls()])
+        .then(([emps, pays]) => {
+          setEmployees(emps || [])
+          setPayrolls(pays || [])
+        })
+        .catch(() => { })
+    }
+  }, [user?.id])
+
   const isAdminOrPayroll = user?.role === ROLES.ADMIN || user?.role === ROLES.PAYROLL_OFFICER
-  
+
   if (!isAdminOrPayroll) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -47,7 +60,7 @@ const Reports = () => {
       </div>
     )
   }
-  
+
   const attendanceData = [
     { month: 'Jan', present: 22, absent: 2, leave: 1 },
     { month: 'Feb', present: 20, absent: 3, leave: 2 },
@@ -56,29 +69,29 @@ const Reports = () => {
     { month: 'May', present: 22, absent: 1, leave: 2 },
     { month: 'Jun', present: 21, absent: 2, leave: 2 }
   ]
-  
+
   const departmentStats = [
     { name: 'Engineering', employees: 12, attendance: 92, turnover: 5 },
     { name: 'Sales', employees: 8, attendance: 88, turnover: 8 },
     { name: 'HR', employees: 5, attendance: 95, turnover: 0 },
     { name: 'Finance', employees: 6, attendance: 90, turnover: 3 }
   ]
-  
+
   const getEmployeePayrollData = () => {
     if (!selectedEmployee) return null
-    
-    const employeePayrolls = payrolls.filter(p => p.employeeId === selectedEmployee.id && p.year === selectedYear)
+
+    const employeePayrolls = payrolls.filter(p => p.user_id === selectedEmployee.id && p.year === selectedYear)
     const monthlyData = Array.from({ length: 12 }, (_, i) => {
       const payroll = employeePayrolls.find(p => p.month === i + 1)
       return {
         month: new Date(selectedYear, i, 1).toLocaleString('default', { month: 'short' }),
-        basic: payroll?.basicSalary || 0,
-        hra: payroll?.houseRentAllowance || 0,
-        pf: payroll?.pfEmployee || 0,
-        net: payroll?.netPay || 0
+        basic: payroll?.basic_salary || 0,
+        hra: payroll?.house_rent_allowance || 0,
+        pf: payroll?.pf_employee || 0,
+        net: payroll?.net_pay || 0
       }
     })
-    
+
     const yearlyTotals = monthlyData.reduce((acc, month) => {
       acc.basic += month.basic
       acc.hra += month.hra
@@ -86,26 +99,26 @@ const Reports = () => {
       acc.net += month.net
       return acc
     }, { basic: 0, hra: 0, pf: 0, net: 0 })
-    
+
     // Get latest payroll for current month
     const currentMonthPayroll = employeePayrolls.find(p => p.month === new Date().getMonth() + 1)
-    
+
     return {
       monthlyData,
       yearlyTotals,
       currentMonthPayroll
     }
   }
-  
+
   const handlePrint = () => {
     const printContent = printRef.current.innerHTML
     const originalContent = document.body.innerHTML
-    
+
     const printWindow = window.open('', '_blank')
     printWindow.document.write(`
       <html>
         <head>
-          <title>Salary Statement Report - ${selectedEmployee?.firstName} ${selectedEmployee?.lastName}</title>
+          <title>Salary Statement Report - ${selectedEmployee?.first_name} ${selectedEmployee?.last_name}</title>
           <style>
             body {
               font-family: Arial, sans-serif;
@@ -197,14 +210,14 @@ const Reports = () => {
     `)
     printWindow.document.close()
   }
-  
+
   const payrollData = getEmployeePayrollData()
-  
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Sidebar />
       <Header />
-      
+
       <main className="ml-64 pt-16 p-6">
         <div className="max-w-7xl mx-auto">
           <div className="flex justify-between items-center mb-6">
@@ -213,7 +226,7 @@ const Reports = () => {
               <p className="text-gray-600">View comprehensive reports and insights</p>
             </div>
           </div>
-          
+
           {/* Report Type Selector */}
           <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
             <div className="flex flex-wrap gap-4">
@@ -226,11 +239,10 @@ const Reports = () => {
                 <button
                   key={type.id}
                   onClick={() => setReportType(type.id)}
-                  className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${
-                    reportType === type.id
+                  className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${reportType === type.id
                       ? 'bg-primary-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                    }`}
                 >
                   <type.icon className="w-4 h-4" />
                   {type.label}
@@ -238,7 +250,7 @@ const Reports = () => {
               ))}
             </div>
           </div>
-          
+
           {/* Salary Statement Report */}
           {reportType === 'salary' && (
             <motion.div
@@ -262,7 +274,7 @@ const Reports = () => {
                     >
                       <option value="">Select Employee</option>
                       {employees.map(emp => (
-                        <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName} ({emp.loginId})</option>
+                        <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name} ({emp.loginId})</option>
                       ))}
                     </select>
                   </div>
@@ -279,7 +291,7 @@ const Reports = () => {
                     </select>
                   </div>
                 </div>
-                
+
                 {selectedEmployee && payrollData && (
                   <div className="flex justify-end">
                     <button
@@ -292,7 +304,7 @@ const Reports = () => {
                   </div>
                 )}
               </div>
-              
+
               {/* Report Content - Printable Area */}
               {selectedEmployee && payrollData && (
                 <div ref={printRef}>
@@ -303,7 +315,7 @@ const Reports = () => {
                       <p className="text-lg text-gray-600 mt-2">Salary Statement Report</p>
                       <p className="text-sm text-gray-500">{selectedYear}</p>
                     </div>
-                    
+
                     {/* Employee Information */}
                     <div className="p-6 bg-gray-50">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -333,7 +345,7 @@ const Reports = () => {
                         </div>
                       </div>
                     </div>
-                    
+
                     {/* Salary Statement Table */}
                     <div className="p-6">
                       <table className="w-full border-collapse">
@@ -350,58 +362,58 @@ const Reports = () => {
                           </tr>
                           <tr>
                             <td className="p-3 border">Basic Salary</td>
-                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.basicSalary?.toFixed(2) || 0}</td>
+                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.basic_salary?.toFixed(2) || 0}</td>
                             <td className="p-3 text-right border">₹{payrollData.yearlyTotals.basic.toFixed(2)}</td>
                           </tr>
                           <tr>
                             <td className="p-3 border">House Rent Allowance (HRA)</td>
-                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.houseRentAllowance?.toFixed(2) || 0}</td>
+                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.house_rent_allowance?.toFixed(2) || 0}</td>
                             <td className="p-3 text-right border">₹{payrollData.yearlyTotals.hra.toFixed(2)}</td>
                           </tr>
                           <tr>
                             <td className="p-3 border">Standard Allowance</td>
-                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.standardAllowance?.toFixed(2) || 0}</td>
-                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.standardAllowance || 0) * 12}</td>
+                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.standard_allowance?.toFixed(2) || 0}</td>
+                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.standard_allowance || 0) * 12}</td>
                           </tr>
                           <tr>
                             <td className="p-3 border">Performance Bonus</td>
-                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.performanceBonus?.toFixed(2) || 0}</td>
-                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.performanceBonus || 0) * 12}</td>
+                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.performance_bonus?.toFixed(2) || 0}</td>
+                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.performance_bonus || 0) * 12}</td>
                           </tr>
                           <tr>
                             <td className="p-3 border">Leave Travel Allowance</td>
-                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.leaveTravelAllowance?.toFixed(2) || 0}</td>
-                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.leaveTravelAllowance || 0) * 12}</td>
+                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.leave_travel_allowance?.toFixed(2) || 0}</td>
+                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.leave_travel_allowance || 0) * 12}</td>
                           </tr>
-                          
+
                           <tr className="bg-gray-50">
                             <td colSpan="3" className="p-2 font-semibold border">Deductions</td>
                           </tr>
                           <tr>
                             <td className="p-3 border">PF (Employee Contribution)</td>
-                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.pfEmployee?.toFixed(2) || 0}</td>
+                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.pf_employee?.toFixed(2) || 0}</td>
                             <td className="p-3 text-right border">₹{payrollData.yearlyTotals.pf.toFixed(2)}</td>
                           </tr>
                           <tr>
                             <td className="p-3 border">Professional Tax</td>
-                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.professionalTax?.toFixed(2) || 0}</td>
-                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.professionalTax || 0) * 12}</td>
+                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.professional_tax?.toFixed(2) || 0}</td>
+                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.professional_tax || 0) * 12}</td>
                           </tr>
                           <tr>
                             <td className="p-3 border">TDS Deduction</td>
                             <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.tds?.toFixed(2) || 0}</td>
                             <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.tds || 0) * 12}</td>
                           </tr>
-                          
+
                           <tr className="total-row bg-yellow-50 font-bold">
                             <td className="p-3 border">Net Salary</td>
-                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.netPay?.toFixed(2) || 0}</td>
+                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.net_pay?.toFixed(2) || 0}</td>
                             <td className="p-3 text-right border">₹{payrollData.yearlyTotals.net.toFixed(2)}</td>
                           </tr>
                         </tbody>
                       </table>
                     </div>
-                    
+
                     {/* Monthly Breakdown */}
                     <div className="p-6 border-t">
                       <h4 className="font-semibold text-gray-800 mb-4">Monthly Salary Breakdown - {selectedYear}</h4>
@@ -439,7 +451,7 @@ const Reports = () => {
                         </table>
                       </div>
                     </div>
-                    
+
                     {/* Footer */}
                     <div className="text-center py-6 text-xs text-gray-400 border-t">
                       <p>This is a computer generated report. No signature required.</p>
@@ -448,7 +460,7 @@ const Reports = () => {
                   </div>
                 </div>
               )}
-              
+
               {!selectedEmployee && (
                 <div className="bg-white rounded-xl shadow-sm p-12 text-center">
                   <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -460,7 +472,7 @@ const Reports = () => {
               )}
             </motion.div>
           )}
-          
+
           {/* Attendance Report */}
           {reportType === 'attendance' && (
             <motion.div
@@ -483,28 +495,27 @@ const Reports = () => {
                   </LineChart>
                 </ResponsiveContainer>
               </div>
-              
+
               <div className="bg-white rounded-xl shadow-sm p-6">
                 <h3 className="font-semibold text-gray-800 mb-4">Current Employee Status</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {employees.map((emp) => (
                     <div key={emp.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div>
-                        <p className="font-medium text-gray-800">{emp.firstName} {emp.lastName}</p>
+                        <p className="font-medium text-gray-800">{emp.first_name} {emp.last_name}</p>
                         <p className="text-sm text-gray-500">{emp.loginId}</p>
                       </div>
-                      <div className={`w-3 h-3 rounded-full ${
-                        emp.status === 'present' ? 'bg-green-500' :
-                        emp.status === 'absent' ? 'bg-yellow-500' :
-                        emp.status === 'leave' ? 'bg-blue-500' : 'bg-red-500'
-                      }`}></div>
+                      <div className={`w-3 h-3 rounded-full ${emp.status === 'present' ? 'bg-green-500' :
+                          emp.status === 'absent' ? 'bg-yellow-500' :
+                            emp.status === 'leave' ? 'bg-blue-500' : 'bg-red-500'
+                        }`}></div>
                     </div>
                   ))}
                 </div>
               </div>
             </motion.div>
           )}
-          
+
           {/* Payroll Report */}
           {reportType === 'payroll' && (
             <motion.div
@@ -545,7 +556,7 @@ const Reports = () => {
               </div>
             </motion.div>
           )}
-          
+
           {/* Department Report */}
           {reportType === 'department' && (
             <motion.div

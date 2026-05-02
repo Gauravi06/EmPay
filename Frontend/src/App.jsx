@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import Login from './pages/Login'
@@ -18,7 +18,14 @@ import ProtectedRoute from './components/ProtectedRoute'
 import { useAuthStore, MODULES, PERMISSIONS } from './stores/authStore'
 
 function App() {
-  const { isAuthenticated } = useAuthStore()
+  const { isAuthenticated, refreshUser } = useAuthStore()
+
+  // Validate stored token on every app load — clears stale tokens from old sessions
+  useEffect(() => {
+    if (isAuthenticated) {
+      refreshUser()
+    }
+  }, [])
 
   return (
     <Router>
@@ -27,7 +34,7 @@ function App() {
         <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" />} />
         <Route path="/signup" element={!isAuthenticated ? <SignUp /> : <Navigate to="/dashboard" />} />
         <Route path="/" element={<Navigate to="/login" />} />
-        
+
         {/* Protected Routes */}
         <Route path="/dashboard" element={
           <ProtectedRoute>
