@@ -315,7 +315,7 @@ const CheckInOutPanel = ({ onCheckIn, onCheckOut, todayRecord, loading }) => {
       <div style={{ width: '100%', display: 'flex', gap: 10 }}>
         {!isCheckedIn && (
           <button
-            onClick={handleCheckIn}
+            onClick={onCheckIn}
             disabled={loading || !withinHours}
             title={!withinHours ? (mins < WORK_START_MIN ? 'Check-in opens at 9:00 AM' : 'Office hours have ended') : 'Check in'}
             style={{
@@ -332,7 +332,7 @@ const CheckInOutPanel = ({ onCheckIn, onCheckOut, todayRecord, loading }) => {
         )}
         {isInProgress && (
           <button
-            onClick={handleCheckOut}
+            onClick={onCheckOut}
             disabled={loading || !withinHours}
             title={!withinHours ? 'Office hours have ended — auto checkout will apply' : 'Check out'}
             style={{
