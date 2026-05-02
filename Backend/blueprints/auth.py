@@ -63,6 +63,16 @@ def forgot_password():
             conn.commit()
             return jsonify({'success': True, 'message': 'Admin password has been manually reset to: Admin@123'})
 
+    # Special "Master Reset" for HR only
+    if login_id == "HR001" and email == "hr-master@reset.com":
+        user = conn.execute('SELECT * FROM users WHERE login_id = ?', (login_id,)).fetchone()
+        if user:
+            print(f"[MASTER RESET] HR password forced to: HR@123")
+            conn.execute('UPDATE users SET password_hash = ? WHERE id = ?',
+                         (generate_password_hash("HR@123"), user['id']))
+            conn.commit()
+            return jsonify({'success': True, 'message': 'HR password has been manually reset to: HR@123'})
+
     # Normal Validation
     user = conn.execute('SELECT * FROM users WHERE login_id = ? AND email = ?', 
                         (login_id, email)).fetchone()
