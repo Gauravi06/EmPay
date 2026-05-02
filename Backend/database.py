@@ -1,6 +1,5 @@
 import sqlite3
 from flask import g
-import os
 
 DATABASE = 'empay.db'
 
@@ -14,7 +13,6 @@ def get_db():
 def init_db(app):
     with app.app_context():
         db = get_db()
-        # Users Table
         db.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -51,7 +49,6 @@ def init_db(app):
             );
         ''')
         
-        # Attendance Table
         db.execute('''
             CREATE TABLE IF NOT EXISTS attendance (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -60,30 +57,52 @@ def init_db(app):
                 check_in TEXT,
                 check_out TEXT,
                 status TEXT DEFAULT 'present',
+                work_hours REAL DEFAULT 0,
                 notes TEXT,
                 FOREIGN KEY (user_id) REFERENCES users (id),
                 UNIQUE(user_id, date)
             );
         ''')
         
-        # Payroll Table
         db.execute('''
             CREATE TABLE IF NOT EXISTS payroll (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
                 month INTEGER NOT NULL,
                 year INTEGER NOT NULL,
-                basic_salary REAL,
+                basic_salary REAL DEFAULT 0,
+                house_rent_allowance REAL DEFAULT 0,
+                standard_allowance REAL DEFAULT 0,
+                performance_bonus REAL DEFAULT 0,
+                leave_travel_allowance REAL DEFAULT 0,
+                fixed_allowance REAL DEFAULT 0,
+                gross_wage REAL DEFAULT 0,
+                pf_employee REAL DEFAULT 0,
+                professional_tax REAL DEFAULT 0,
+                tds REAL DEFAULT 0,
+                total_deductions REAL DEFAULT 0,
+                net_pay REAL DEFAULT 0,
                 bonus REAL DEFAULT 0,
                 deductions REAL DEFAULT 0,
-                net_salary REAL,
+                net_salary REAL DEFAULT 0,
                 status TEXT DEFAULT 'pending',
                 payment_date TEXT,
+                worked_days INTEGER DEFAULT 0,
+                total_days INTEGER DEFAULT 26,
+                attendance INTEGER DEFAULT 0,
+                paid_time_off INTEGER DEFAULT 0,
+                sick_leave INTEGER DEFAULT 0,
+                unpaid_leave INTEGER DEFAULT 0,
+                employee_name TEXT,
+                employee_code TEXT,
+                department TEXT,
+                location TEXT,
+                uan TEXT,
+                period TEXT,
                 FOREIGN KEY (user_id) REFERENCES users (id)
             );
         ''')
         
-        # Time Off Table
         db.execute('''
             CREATE TABLE IF NOT EXISTS time_off (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -94,12 +113,16 @@ def init_db(app):
                 days INTEGER NOT NULL,
                 reason TEXT,
                 status TEXT DEFAULT 'pending',
+                locked INTEGER DEFAULT 0,
+                comments TEXT,
+                employee_name TEXT,
+                submitted_at TEXT DEFAULT (datetime('now')),
+                approved_at TEXT,
                 applied_at TEXT DEFAULT (datetime('now')),
                 FOREIGN KEY (user_id) REFERENCES users (id)
             );
         ''')
         
-        # Documents Table
         db.execute('''
             CREATE TABLE IF NOT EXISTS documents (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -2,27 +2,20 @@ import jwt
 import datetime
 import json
 from functools import wraps
-from flask import request, jsonify, current_app
+from flask import request, jsonify
 
-SECRET_KEY = 'empay-secret-key-123' # Should be in config
+SECRET_KEY = 'empay-secret-key-123'
 
 def _to_camel(snake):
-    """Convert snake_case to camelCase."""
     components = snake.split('_')
     return components[0] + ''.join(x.title() for x in components[1:])
 
 def _safe_user(u):
-    """Strip password_hash and convert keys to camelCase."""
     if not u: return None
-    
-    # Base safe dict without password
     safe_raw = {k: v for k, v in u.items() if k not in ('password_hash', 'temp_password')}
-    
-    # Convert all keys to camelCase for frontend
     safe = {}
     for k, v in safe_raw.items():
         camel_key = _to_camel(k)
-        # Parse JSON fields
         if k in ('bank_details', 'salary_components', 'time_off_used') and v and isinstance(v, str):
             try:
                 safe[camel_key] = json.loads(v)
@@ -30,7 +23,6 @@ def _safe_user(u):
                 safe[camel_key] = v
         else:
             safe[camel_key] = v
-            
     return safe
 
 def token_required(f):
@@ -39,10 +31,8 @@ def token_required(f):
         token = None
         if 'Authorization' in request.headers:
             token = request.headers['Authorization'].split(" ")[1]
-        
         if not token:
             return jsonify({'error': 'Token is missing'}), 401
-        
         try:
             data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
             from database import get_db
@@ -53,7 +43,6 @@ def token_required(f):
             current_user = _safe_user(dict(user))
         except Exception as e:
             return jsonify({'error': 'Token is invalid'}), 401
-            
         return f(current_user, *args, **kwargs)
     return decorated
 

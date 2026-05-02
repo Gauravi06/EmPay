@@ -1,72 +1,99 @@
 from flask import Blueprint, request, jsonify
+import json, datetime
 from database import get_db
 from utils import token_required, admin_required
 
-payroll_bp = Blueprint('payroll', __name__)
+time_off_bp = Blueprint('time_off', __name__)
 
-@payroll_bp.route('', methods=['GET'])
+@time_off_bp.route('', methods=['GET'])
 @token_required
-def get_payroll(current_user):
-    employee_id = request.args.get('employee_id', current_user['id'])
-    year = request.args.get('year')
-    month = request.args.get('month')
-    
-    if current_user['role'] != 'admin' and int(employee_id) != current_user['id']:
-        return jsonify({'error': 'Unauthorized'}), 403
-
+def get_time_off(current_user):
     conn = get_db()
-    query = 'SELECT * FROM payroll WHERE user_id = ?'
-    params = [employee_id]
+    if current_user['role'] in ('admin', 'hr_officer'):
+        requests = conn.execute('''
+            SELECT t.*, u.first_name || ' ' || u.last_name as employee_name
+            FROM time_off t
+            LEFT JOIN users u ON t.user_id = u.id
+            ORDER BY t.applied_at DESC
+        ''').fetchall()
+    else:
+        requests = conn.execute('''
+            SELECT t.*, u.first_name || ' ' || u.last_name as employee_name
+            FROM time_off t
+            LEFT JOIN users u ON t.user_id = u.id
+            WHERE t.user_id = ?
+            ORDER BY t.applied_at DESC
+        ''', (current_user['id'],)).fetchall()
     
-    if year:
-        query += " AND year = ?"
-        params.append(year)
-    if month:
-        query += " AND month = ?"
-        params.append(month)
-        
-    records = conn.execute(query, params).fetchall()
-    return jsonify({'payrolls': [dict(r) for r in records]})
+    return jsonify({'requests': [dict(r) for r in requests]})
 
-@payroll_bp.route('/generate', methods=['POST'])
+@time_off_bp.route('', methods=['POST'])
 @token_required
-@admin_required
-def generate_payroll(current_user):
+def request_time_off(current_user):
     data = request.json
-    employee_id = data.get('employee_id')
-    month = data.get('month')
-    year = data.get('year')
+    employee_id = data.get('employeeId', current_user['id'])
+    start_date = data.get('startDate')
+    end_date = data.get('endDate')
+    reason = data.get('reason')
+    leave_type = data.get('type', 'paid')
     
-    if not all([employee_id, month, year]):
-        return jsonify({'error': 'Missing required fields'}), 400
-        
-    conn = get_db()
-    user = conn.execute('SELECT * FROM users WHERE id = ?', (employee_id,)).fetchone()
-    if not user:
-        return jsonify({'error': 'User not found'}), 404
+    if not start_date or not end_date or not reason:
+        return jsonify({'error': 'startDate, endDate and reason are required'}), 400
+    
+    # Calculate days
+    s = datetime.datetime.strptime(start_date, '%Y-%m-%d')
+    e = datetime.datetime.strptime(end_date, '%Y-%m-%d')
+    days = (e - s).days + 1
 
-    # Simple generation logic
-    salary = user['salary'] or 50000
-    deductions = salary * 0.12 # PF etc
-    net = salary - deductions
-    
+    conn = get_db()
     conn.execute('''
-        INSERT INTO payroll (user_id, month, year, basic_salary, deductions, net_salary, status)
-        VALUES (?, ?, ?, ?, ?, ?, 'pending')
-    ''', (employee_id, month, year, salary, deductions, net))
+        INSERT INTO time_off (user_id, type, start_date, end_date, days, reason, submitted_at)
+        VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+    ''', (employee_id, leave_type, start_date, end_date, days, reason))
     conn.commit()
-    return jsonify({'message': 'Payroll generated successfully'})
+    return jsonify({'message': 'Request submitted successfully'}), 201
 
-@payroll_bp.route('/<int:payroll_id>/status', methods=['PUT'])
+@time_off_bp.route('/<int:request_id>/approve', methods=['POST'])
 @token_required
-@admin_required
-def update_payroll_status(current_user, payroll_id):
+def approve_time_off(current_user, request_id):
+    if current_user['role'] not in ('admin', 'hr_officer', 'payroll_officer'):
+        return jsonify({'error': 'Unauthorized'}), 403
+    
     data = request.json
-    status = data.get('status')
-    if not status:
-        return jsonify({'error': 'Status is required'}), 400
-        
+    approved = data.get('approved')
+    comments = data.get('comments', '')
+    status = 'approved' if approved else 'rejected'
+
     conn = get_db()
-    conn.execute('UPDATE payroll SET status = ? WHERE id = ?', (status, payroll_id))
+    req = conn.execute('SELECT * FROM time_off WHERE id = ?', (request_id,)).fetchone()
+    if not req:
+        return jsonify({'error': 'Request not found'}), 404
+
+    conn.execute('''
+        UPDATE time_off SET status = ?, comments = ?, approved_at = datetime('now')
+        WHERE id = ?
+    ''', (status, comments, request_id))
+    
+    if status == 'approved':
+        user = conn.execute('SELECT * FROM users WHERE id = ?', (req['user_id'],)).fetchone()
+        used = json.loads(user['time_off_used'] or '{}')
+        leave_type = req['type']
+        used[leave_type] = used.get(leave_type, 0) + req['days']
+        conn.execute('UPDATE users SET time_off_used = ? WHERE id = ?', (json.dumps(used), req['user_id']))
+        
     conn.commit()
-    return jsonify({'message': 'Payroll status updated'})
+    return jsonify({'message': f'Request {status} successfully'})
+
+@time_off_bp.route('/<int:request_id>/lock', methods=['POST'])
+@token_required
+def lock_time_off(current_user, request_id):
+    if current_user['role'] not in ('admin', 'hr_officer'):
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    data = request.json
+    lock = 1 if data.get('lock') else 0
+    
+    conn = get_db()
+    conn.execute('UPDATE time_off SET locked = ? WHERE id = ?', (lock, request_id))
+    conn.commit()
+    return jsonify({'message': 'Time off lock status updated'})

@@ -14,20 +14,17 @@ def create_app():
     app = Flask(__name__)
     CORS(app)
     
-    # Configuration
     app.config['SECRET_KEY'] = 'empay-secret-key-123'
     app.config['DATABASE'] = 'empay.db'
 
-    # Initialize Database
     init_db(app)
 
-    # Register Blueprints
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(employees_bp, url_prefix='/api/employees')
     app.register_blueprint(attendance_bp, url_prefix='/api/attendance')
     app.register_blueprint(time_off_bp, url_prefix='/api/time-off')
     app.register_blueprint(payroll_bp, url_prefix='/api/payroll')
-    app.register_blueprint(misc_bp, url_prefix='/api') # Reports and Docs are at /api/reports...
+    app.register_blueprint(misc_bp, url_prefix='/api')
 
     @app.route('/')
     def index():
@@ -43,6 +40,5 @@ def create_app():
 app = create_app()
 
 if __name__ == '__main__':
-    print("EmPay Backend v2.0 (Refactored) starting...")
-    print("Endpoints structured by Blueprints for better readability.")
+    print("EmPay Backend v2.0 starting...")
     app.run(debug=True, port=5000)
