@@ -1,9 +1,14 @@
-import React, { useState } from 'react'
-import { useAuthStore } from '../stores/authStore'
+import React, { useState, useRef } from 'react'
+import { useAuthStore, MODULES, PERMISSIONS, ROLES } from '../stores/authStore'
 import Sidebar from '../components/Sidebar'
 import Header from '../components/Header'
 import { motion } from 'framer-motion'
-import { FileText, TrendingUp, Users, Calendar, Download, Eye, BarChart3, PieChart as PieChartIcon } from 'lucide-react'
+import { 
+  FileText, TrendingUp, Users, Calendar, Download, Eye, 
+  BarChart3, PieChart as PieChartIcon, Printer, Search,
+  DollarSign, Briefcase, MapPin, Hash, User, Building,
+  ChevronDown, ChevronUp
+} from 'lucide-react'
 import {
   BarChart,
   Bar,
@@ -19,11 +24,29 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts'
+import { format } from 'date-fns'
 
 const Reports = () => {
-  const { employees } = useAuthStore()
-  const [reportType, setReportType] = useState('attendance')
-  const [dateRange, setDateRange] = useState({ start: '', end: '' })
+  const { user, employees, payrolls, hasPermission, ROLES } = useAuthStore()
+  const [reportType, setReportType] = useState('salary')
+  const [selectedEmployee, setSelectedEmployee] = useState(null)
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+  const [showSalaryReport, setShowSalaryReport] = useState(false)
+  const printRef = useRef()
+  
+  const isAdminOrPayroll = user?.role === ROLES.ADMIN || user?.role === ROLES.PAYROLL_OFFICER
+  
+  if (!isAdminOrPayroll) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <FileText className="w-16 h-16 text-red-400 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-red-600 mb-2">Access Denied</h1>
+          <p className="text-gray-600">You don't have permission to access this page.</p>
+        </div>
+      </div>
+    )
+  }
   
   const attendanceData = [
     { month: 'Jan', present: 22, absent: 2, leave: 1 },
@@ -41,14 +64,141 @@ const Reports = () => {
     { name: 'Finance', employees: 6, attendance: 90, turnover: 3 }
   ]
   
-  const getStatusColor = (status) => {
-    switch(status) {
-      case 'present': return 'bg-green-500'
-      case 'absent': return 'bg-yellow-500'
-      case 'leave': return 'bg-blue-500'
-      default: return 'bg-red-500'
+  const getEmployeePayrollData = () => {
+    if (!selectedEmployee) return null
+    
+    const employeePayrolls = payrolls.filter(p => p.employeeId === selectedEmployee.id && p.year === selectedYear)
+    const monthlyData = Array.from({ length: 12 }, (_, i) => {
+      const payroll = employeePayrolls.find(p => p.month === i + 1)
+      return {
+        month: new Date(selectedYear, i, 1).toLocaleString('default', { month: 'short' }),
+        basic: payroll?.basicSalary || 0,
+        hra: payroll?.houseRentAllowance || 0,
+        pf: payroll?.pfEmployee || 0,
+        net: payroll?.netPay || 0
+      }
+    })
+    
+    const yearlyTotals = monthlyData.reduce((acc, month) => {
+      acc.basic += month.basic
+      acc.hra += month.hra
+      acc.pf += month.pf
+      acc.net += month.net
+      return acc
+    }, { basic: 0, hra: 0, pf: 0, net: 0 })
+    
+    // Get latest payroll for current month
+    const currentMonthPayroll = employeePayrolls.find(p => p.month === new Date().getMonth() + 1)
+    
+    return {
+      monthlyData,
+      yearlyTotals,
+      currentMonthPayroll
     }
   }
+  
+  const handlePrint = () => {
+    const printContent = printRef.current.innerHTML
+    const originalContent = document.body.innerHTML
+    
+    const printWindow = window.open('', '_blank')
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Salary Statement Report - ${selectedEmployee?.firstName} ${selectedEmployee?.lastName}</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              margin: 40px;
+              padding: 20px;
+            }
+            .header {
+              text-align: center;
+              margin-bottom: 30px;
+              border-bottom: 2px solid #2563eb;
+              padding-bottom: 20px;
+            }
+            .company-name {
+              font-size: 24px;
+              font-weight: bold;
+              color: #2563eb;
+            }
+            .report-title {
+              font-size: 18px;
+              margin-top: 10px;
+              color: #4b5563;
+            }
+            .employee-info {
+              background-color: #f3f4f6;
+              padding: 15px;
+              border-radius: 8px;
+              margin: 20px 0;
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 10px;
+            }
+            .info-row {
+              display: flex;
+              justify-content: space-between;
+              padding: 5px 0;
+            }
+            .info-label {
+              font-weight: 600;
+              color: #6b7280;
+            }
+            .table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 20px 0;
+            }
+            .table th {
+              background-color: #f3f4f6;
+              border: 1px solid #e5e7eb;
+              padding: 12px;
+              text-align: left;
+              font-weight: 600;
+            }
+            .table td {
+              border: 1px solid #e5e7eb;
+              padding: 10px;
+              text-align: right;
+            }
+            .table td:first-child {
+              text-align: left;
+            }
+            .total-row {
+              background-color: #fef3c7;
+              font-weight: bold;
+            }
+            .footer {
+              margin-top: 40px;
+              text-align: center;
+              font-size: 12px;
+              color: #6b7280;
+              border-top: 1px solid #e5e7eb;
+              padding-top: 20px;
+            }
+            @media print {
+              body {
+                margin: 0;
+                padding: 20px;
+              }
+              button {
+                display: none;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          ${printContent}
+          <button onclick="window.print()" style="margin-top: 20px; padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 5px; cursor: pointer;">Print Report</button>
+        </body>
+      </html>
+    `)
+    printWindow.document.close()
+  }
+  
+  const payrollData = getEmployeePayrollData()
   
   return (
     <div className="min-h-screen bg-gray-50">
@@ -62,19 +212,15 @@ const Reports = () => {
               <h1 className="text-2xl font-bold text-gray-800">Reports & Analytics</h1>
               <p className="text-gray-600">View comprehensive reports and insights</p>
             </div>
-            <button className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2">
-              <Download className="w-4 h-4" />
-              Export Report
-            </button>
           </div>
           
           {/* Report Type Selector */}
           <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
             <div className="flex flex-wrap gap-4">
               {[
+                { id: 'salary', label: 'Salary Statement Report', icon: DollarSign },
                 { id: 'attendance', label: 'Attendance Report', icon: Calendar },
                 { id: 'payroll', label: 'Payroll Report', icon: TrendingUp },
-                { id: 'employees', label: 'Employee Report', icon: Users },
                 { id: 'department', label: 'Department Report', icon: BarChart3 }
               ].map((type) => (
                 <button
@@ -93,29 +239,229 @@ const Reports = () => {
             </div>
           </div>
           
-          {/* Date Range Picker */}
-          <div className="bg-white rounded-xl shadow-sm p-4 mb-6 flex gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-              <input
-                type="date"
-                value={dateRange.start}
-                onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-                className="px-3 py-2 border border-gray-300 rounded-lg"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-              <input
-                type="date"
-                value={dateRange.end}
-                onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-                className="px-3 py-2 border border-gray-300 rounded-lg"
-              />
-            </div>
-          </div>
+          {/* Salary Statement Report */}
+          {reportType === 'salary' && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-6"
+            >
+              {/* Selection Panel */}
+              <div className="bg-white rounded-xl shadow-sm p-6">
+                <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <FileText className="w-5 h-5" />
+                  Salary Statement Report
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Employee Name</label>
+                    <select
+                      value={selectedEmployee?.id || ''}
+                      onChange={(e) => setSelectedEmployee(employees.find(emp => emp.id === parseInt(e.target.value)))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    >
+                      <option value="">Select Employee</option>
+                      {employees.map(emp => (
+                        <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName} ({emp.loginId})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
+                    <select
+                      value={selectedYear}
+                      onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    >
+                      {[2024, 2025, 2026].map(y => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                
+                {selectedEmployee && payrollData && (
+                  <div className="flex justify-end">
+                    <button
+                      onClick={handlePrint}
+                      className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2"
+                    >
+                      <Printer className="w-4 h-4" />
+                      Print Report
+                    </button>
+                  </div>
+                )}
+              </div>
+              
+              {/* Report Content - Printable Area */}
+              {selectedEmployee && payrollData && (
+                <div ref={printRef}>
+                  <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                    {/* Header */}
+                    <div className="text-center py-8 border-b">
+                      <h1 className="text-2xl font-bold text-primary-600">Employee Management System</h1>
+                      <p className="text-lg text-gray-600 mt-2">Salary Statement Report</p>
+                      <p className="text-sm text-gray-500">{selectedYear}</p>
+                    </div>
+                    
+                    {/* Employee Information */}
+                    <div className="p-6 bg-gray-50">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm text-gray-500">Employee Name</p>
+                          <p className="font-semibold text-gray-800">{selectedEmployee.firstName} {selectedEmployee.lastName}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Employee Code</p>
+                          <p className="font-semibold text-gray-800">{selectedEmployee.loginId}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Designation</p>
+                          <p className="font-semibold text-gray-800">{selectedEmployee.role?.replace('_', ' ') || 'Employee'}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Department</p>
+                          <p className="font-semibold text-gray-800">{selectedEmployee.department || 'General'}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Date of Joining</p>
+                          <p className="font-semibold text-gray-800">{selectedEmployee.joiningDate}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Salary Effective From</p>
+                          <p className="font-semibold text-gray-800">{selectedEmployee.joiningDate}</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Salary Statement Table */}
+                    <div className="p-6">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="bg-gray-100">
+                            <th className="p-3 text-left border">Salary Components</th>
+                            <th className="p-3 text-right border">Monthly Amount (₹)</th>
+                            <th className="p-3 text-right border">Yearly Amount (₹)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="bg-gray-50">
+                            <td colSpan="3" className="p-2 font-semibold border">Earnings</td>
+                          </tr>
+                          <tr>
+                            <td className="p-3 border">Basic Salary</td>
+                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.basicSalary?.toFixed(2) || 0}</td>
+                            <td className="p-3 text-right border">₹{payrollData.yearlyTotals.basic.toFixed(2)}</td>
+                          </tr>
+                          <tr>
+                            <td className="p-3 border">House Rent Allowance (HRA)</td>
+                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.houseRentAllowance?.toFixed(2) || 0}</td>
+                            <td className="p-3 text-right border">₹{payrollData.yearlyTotals.hra.toFixed(2)}</td>
+                          </tr>
+                          <tr>
+                            <td className="p-3 border">Standard Allowance</td>
+                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.standardAllowance?.toFixed(2) || 0}</td>
+                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.standardAllowance || 0) * 12}</td>
+                          </tr>
+                          <tr>
+                            <td className="p-3 border">Performance Bonus</td>
+                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.performanceBonus?.toFixed(2) || 0}</td>
+                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.performanceBonus || 0) * 12}</td>
+                          </tr>
+                          <tr>
+                            <td className="p-3 border">Leave Travel Allowance</td>
+                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.leaveTravelAllowance?.toFixed(2) || 0}</td>
+                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.leaveTravelAllowance || 0) * 12}</td>
+                          </tr>
+                          
+                          <tr className="bg-gray-50">
+                            <td colSpan="3" className="p-2 font-semibold border">Deductions</td>
+                          </tr>
+                          <tr>
+                            <td className="p-3 border">PF (Employee Contribution)</td>
+                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.pfEmployee?.toFixed(2) || 0}</td>
+                            <td className="p-3 text-right border">₹{payrollData.yearlyTotals.pf.toFixed(2)}</td>
+                          </tr>
+                          <tr>
+                            <td className="p-3 border">Professional Tax</td>
+                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.professionalTax?.toFixed(2) || 0}</td>
+                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.professionalTax || 0) * 12}</td>
+                          </tr>
+                          <tr>
+                            <td className="p-3 border">TDS Deduction</td>
+                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.tds?.toFixed(2) || 0}</td>
+                            <td className="p-3 text-right border">₹{(payrollData.currentMonthPayroll?.tds || 0) * 12}</td>
+                          </tr>
+                          
+                          <tr className="total-row bg-yellow-50 font-bold">
+                            <td className="p-3 border">Net Salary</td>
+                            <td className="p-3 text-right border">₹{payrollData.currentMonthPayroll?.netPay?.toFixed(2) || 0}</td>
+                            <td className="p-3 text-right border">₹{payrollData.yearlyTotals.net.toFixed(2)}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    
+                    {/* Monthly Breakdown */}
+                    <div className="p-6 border-t">
+                      <h4 className="font-semibold text-gray-800 mb-4">Monthly Salary Breakdown - {selectedYear}</h4>
+                      <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
+                          <thead>
+                            <tr className="bg-gray-100">
+                              <th className="p-2 border text-left">Month</th>
+                              <th className="p-2 border text-right">Basic</th>
+                              <th className="p-2 border text-right">HRA</th>
+                              <th className="p-2 border text-right">PF</th>
+                              <th className="p-2 border text-right">Net Salary</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {payrollData.monthlyData.map((month, index) => (
+                              <tr key={index} className="hover:bg-gray-50">
+                                <td className="p-2 border">{month.month}</td>
+                                <td className="p-2 border text-right">₹{month.basic.toFixed(2)}</td>
+                                <td className="p-2 border text-right">₹{month.hra.toFixed(2)}</td>
+                                <td className="p-2 border text-right">₹{month.pf.toFixed(2)}</td>
+                                <td className="p-2 border text-right font-medium">₹{month.net.toFixed(2)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot>
+                            <tr className="bg-gray-100 font-bold">
+                              <td className="p-2 border">Total</td>
+                              <td className="p-2 border text-right">₹{payrollData.yearlyTotals.basic.toFixed(2)}</td>
+                              <td className="p-2 border text-right">₹{payrollData.yearlyTotals.hra.toFixed(2)}</td>
+                              <td className="p-2 border text-right">₹{payrollData.yearlyTotals.pf.toFixed(2)}</td>
+                              <td className="p-2 border text-right">₹{payrollData.yearlyTotals.net.toFixed(2)}</td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    </div>
+                    
+                    {/* Footer */}
+                    <div className="text-center py-6 text-xs text-gray-400 border-t">
+                      <p>This is a computer generated report. No signature required.</p>
+                      <p>Generated on: {new Date().toLocaleString()}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {!selectedEmployee && (
+                <div className="bg-white rounded-xl shadow-sm p-12 text-center">
+                  <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-600">Select an Employee</h3>
+                  <p className="text-sm text-gray-400 mt-1">
+                    Choose an employee and year to generate the salary statement report
+                  </p>
+                </div>
+              )}
+            </motion.div>
+          )}
           
-          {/* Report Content */}
+          {/* Attendance Report */}
           {reportType === 'attendance' && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -147,7 +493,11 @@ const Reports = () => {
                         <p className="font-medium text-gray-800">{emp.firstName} {emp.lastName}</p>
                         <p className="text-sm text-gray-500">{emp.loginId}</p>
                       </div>
-                      <div className={`status-dot ${getStatusColor(emp.status)}`}></div>
+                      <div className={`w-3 h-3 rounded-full ${
+                        emp.status === 'present' ? 'bg-green-500' :
+                        emp.status === 'absent' ? 'bg-yellow-500' :
+                        emp.status === 'leave' ? 'bg-blue-500' : 'bg-red-500'
+                      }`}></div>
                     </div>
                   ))}
                 </div>
@@ -155,6 +505,7 @@ const Reports = () => {
             </motion.div>
           )}
           
+          {/* Payroll Report */}
           {reportType === 'payroll' && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -195,50 +546,7 @@ const Reports = () => {
             </motion.div>
           )}
           
-          {reportType === 'employees' && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-xl shadow-sm p-6"
-            >
-              <h3 className="font-semibold text-gray-800 mb-4">Employee Directory</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Name</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Login ID</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Email</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Phone</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Joining Date</th>
-                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {employees.map((emp) => (
-                      <tr key={emp.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm text-gray-800">{emp.firstName} {emp.lastName}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{emp.loginId}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{emp.email}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{emp.phone}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{emp.joiningDate}</td>
-                        <td className="px-4 py-3 text-sm">
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            emp.status === 'present' ? 'bg-green-100 text-green-800' :
-                            emp.status === 'absent' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-blue-100 text-blue-800'
-                          }`}>
-                            {emp.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </motion.div>
-          )}
-          
+          {/* Department Report */}
           {reportType === 'department' && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
