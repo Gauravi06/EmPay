@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval,
-  isWeekend, addMonths, subMonths, addDays, subDays, isToday, parseISO
+  isWeekend, addMonths, subMonths, addDays, subDays, isToday
 } from 'date-fns'
 import toast from 'react-hot-toast'
 
@@ -421,7 +421,6 @@ const Attendance = () => {
 
   const filteredEmployees = employees.filter(e =>
     !searchTerm ||
-    `${e.first_name} ${e.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (e.login_id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (e.department || '').toLowerCase().includes(searchTerm.toLowerCase())
   )
@@ -443,16 +442,6 @@ const Attendance = () => {
     <div className="min-h-screen bg-gray-50">
       <Sidebar />
       <Header />
-
-      {showManual && (
-        <ManualEntryModal
-          onClose={() => setShowManual(false)}
-          onSave={handleManualSave}
-          userId={user?.id}
-          employees={employees}
-          isAdminOrHR={isAdminOrHR}
-        />
-      )}
 
       <main className="ml-64 pt-16 min-h-screen">
 
