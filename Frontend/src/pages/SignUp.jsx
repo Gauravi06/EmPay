@@ -216,7 +216,21 @@ const SignUp = () => {
                   <img src={logoPreview} alt="Logo preview" className="su-upload-preview" />
                   <div className="su-upload-preview-info">
                     <div className="su-upload-preview-name">{logoFileName}</div>
-                    <div className="su-upload-preview-change">Click to change</div>
+                    <div className="su-upload-preview-change">
+                      <span onClick={() => fileRef.current?.click()}>Change</span>
+                      <span style={{ margin: '0 8px', color: '#CBD5E1' }}>|</span>
+                      <span 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLogoPreview(null);
+                          setLogoFileName('');
+                          try { localStorage.removeItem('empay_company_logo') } catch {}
+                        }}
+                        style={{ color: '#EF4444' }}
+                      >
+                        Remove
+                      </span>
+                    </div>
                   </div>
                   <CheckCircle size={22} className="su-upload-check" />
                 </div>

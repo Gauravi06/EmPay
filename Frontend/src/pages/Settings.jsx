@@ -61,6 +61,59 @@ const Settings = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
+                <div className="md:col-span-2 mt-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Company Logo</label>
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center bg-gray-50 overflow-hidden">
+                      {localStorage.getItem('empay_company_logo') ? (
+                        <img src={localStorage.getItem('empay_company_logo')} alt="logo" className="w-full h-full object-contain p-2" />
+                      ) : (
+                        <div className="text-xs text-gray-400 font-bold">NO LOGO</div>
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      <input 
+                        type="file" 
+                        id="logo-upload" 
+                        hidden 
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (ev) => {
+                              localStorage.setItem('empay_company_logo', ev.target.result);
+                              setSettings({...settings}); // trigger re-render
+                              toast.success('Logo updated!');
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                      <div className="flex gap-3">
+                        <button 
+                          onClick={() => document.getElementById('logo-upload').click()}
+                          className="text-sm font-bold text-indigo-600 hover:text-indigo-700"
+                        >
+                          Change Logo
+                        </button>
+                        {localStorage.getItem('empay_company_logo') && (
+                          <button 
+                            onClick={() => {
+                              localStorage.removeItem('empay_company_logo');
+                              setSettings({...settings});
+                              toast.success('Logo removed!');
+                            }}
+                            className="text-sm font-bold text-red-600 hover:text-red-700"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-gray-400">Recommended: Square PNG/SVG under 1MB</p>
+                    </div>
+                  </div>
+                </div>
               </div>
               <div className="mt-4 flex justify-end">
                 <button
