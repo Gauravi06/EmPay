@@ -362,10 +362,10 @@ export const useAuthStore = create(
         return data.payrolls
       },
 
-      generatePayroll: async (employeeId, year, month) => {
+      generatePayroll: async (employeeId, year, month, extraData = {}) => {
         const { token } = get()
         const data = await apiFetch('/payroll/generate', {
-          method: 'POST', body: JSON.stringify({ employeeId, year, month })
+          method: 'POST', body: JSON.stringify({ employeeId, year, month, ...extraData })
         }, token)
         return data.payroll
       },

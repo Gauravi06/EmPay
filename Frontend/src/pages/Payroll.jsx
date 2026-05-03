@@ -35,7 +35,7 @@ const StatCard = ({ title, value, icon, badge, badgeColor }) => (
 
 const Payroll = () => {
   const {
-    user, fetchEmployees, fetchPayrolls, generatePayroll,
+    user, fetchEmployees, fetchPayrolls, fetchAllPayrolls, generatePayroll,
     updatePayrollStatus, hasPermission
   } = useAuthStore()
 
@@ -93,7 +93,7 @@ const Payroll = () => {
     setLoading(true)
     try {
       const [pList, eList] = await Promise.all([
-        fetchPayrolls(),
+        isAdminOrPayroll ? fetchAllPayrolls() : fetchPayrolls(),
         fetchEmployees()
       ])
       setPayrolls(pList || [])
