@@ -408,12 +408,12 @@ const ManualEntryModal = ({ onClose, onSave, userId, employees, isAdminOrHR, ini
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
-                <label style={labelStyle}>Check In <span style={{ color: '#CBD5E1', fontWeight: 400 }}>(09:00–18:00)</span></label>
-                <input type="time" value={form.check_in} min="09:00" max="18:00" onChange={e => setF('check_in', e.target.value)} style={fieldStyle} />
+                <label style={labelStyle}>Check In</label>
+                <input type="time" value={form.check_in} onChange={e => setF('check_in', e.target.value)} style={fieldStyle} />
               </div>
               <div>
-                <label style={labelStyle}>Check Out <span style={{ color: '#CBD5E1', fontWeight: 400 }}>(max 18:00)</span></label>
-                <input type="time" value={form.check_out} min={form.check_in || '09:00'} max="18:00" onChange={e => setF('check_out', e.target.value)} style={fieldStyle} />
+                <label style={labelStyle}>Check Out</label>
+                <input type="time" value={form.check_out} onChange={e => setF('check_out', e.target.value)} style={fieldStyle} />
               </div>
             </div>
             <div>
@@ -429,16 +429,10 @@ const ManualEntryModal = ({ onClose, onSave, userId, employees, isAdminOrHR, ini
             </button>
             <button onClick={() => {
               if (!form.check_in) { toast.error('Check-in time required'); return }
-              const [ciH, ciM] = form.check_in.split(':').map(Number)
-              const ciMins = toMinutes(ciH, ciM)
-              if (ciMins < WORK_START_MIN || ciMins >= WORK_END_MIN) {
-                toast.error('Check-in must be between 09:00 and 18:00')
-                return
-              }
               if (form.check_out) {
+                const [ciH, ciM] = form.check_in.split(':').map(Number)
                 const [coH, coM] = form.check_out.split(':').map(Number)
-                const coMins = toMinutes(coH, coM)
-                if (coMins > WORK_END_MIN) { toast.error('Check-out cannot be after 18:00'); return }
+                const ciMins = toMinutes(ciH, ciM), coMins = toMinutes(coH, coM)
                 if (coMins <= ciMins) { toast.error('Check-out must be after check-in'); return }
               }
               onSave(form)
