@@ -16,6 +16,7 @@ import Reports from './pages/Reports'
 import Settings from './pages/Settings'
 import AdminSettings from './pages/AdminSettings'
 import ProtectedRoute from './components/ProtectedRoute'
+import Chatbot from './components/Chatbot'
 import { useAuthStore, MODULES, PERMISSIONS } from './stores/authStore'
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material'
 
@@ -152,6 +153,7 @@ function App() {
           </ProtectedRoute>
         } />
       </Routes>
+      {isAuthenticated && <Chatbot />}
       </Router>
     </ThemeProvider>
   )
