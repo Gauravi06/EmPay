@@ -249,7 +249,7 @@ const TimeWindowBanner = ({ now, officeHours }) => {
 }
 
 /* ─── Check In/Out Panel (Employee) ─── */
-const CheckInOutPanel = ({ onCheckIn, onCheckOut, todayRecord, loading }) => {
+const CheckInOutPanel = ({ onCheckIn, onCheckOut, todayRecord, loading, officeHours }) => {
   const [now, setNow] = useState(new Date())
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000)
@@ -279,7 +279,7 @@ const CheckInOutPanel = ({ onCheckIn, onCheckOut, todayRecord, loading }) => {
           {format(now, 'HH:mm:ss')}
         </div>
         <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 3 }}>{format(now, 'EEEE, d MMMM yyyy')}</div>
-        <div style={{ fontSize: 11, color: '#CBD5E1', marginTop: 2 }}>Office hours: {officeSettings.start} – {officeSettings.end}</div>
+        <div style={{ fontSize: 11, color: '#CBD5E1', marginTop: 2 }}>Office hours: {officeHours.start} – {officeHours.end}</div>
       </div>
 
       {/* Status indicator */}
@@ -1157,7 +1157,7 @@ const Attendance = () => {
                   {/* Row 1: Quick Check-in + Currently In Office status */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
                     {/* Quick Check-in */}
-                    <CheckInOutPanel onCheckIn={handleCheckIn} onCheckOut={handleCheckOut} todayRecord={todayRecord} loading={actionLoading} />
+                    <CheckInOutPanel onCheckIn={handleCheckIn} onCheckOut={handleCheckOut} todayRecord={todayRecord} loading={actionLoading} officeHours={officeSettings} />
 
                     {/* Currently In Office card */}
                     <div style={{ background: 'linear-gradient(135deg, #7C3AED, #5B21B6)', borderRadius: 16, padding: 20, color: '#fff', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
