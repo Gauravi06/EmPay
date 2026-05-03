@@ -1100,7 +1100,7 @@ const Attendance = () => {
             {/* ════════════════════════
                 EMPLOYEE VIEW
             ════════════════════════ */}
-            {!isAdminOrHR && !isPayroll && (() => {
+            {(() => {
               const calDays = eachDayOfInterval({ start: startOfMonth(empMonth), end: endOfMonth(empMonth) })
               const firstDow = startOfMonth(empMonth).getDay()
               const workHrsToday = todayRecord?.work_hours || 0
