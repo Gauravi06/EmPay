@@ -95,7 +95,7 @@ const Payroll = () => {
     setGenerating(true)
     try {
       await generatePayroll(targetEmployee.id, selectedYear, selectedMonth)
-      toast.success(`Payroll generated for ${targetEmployee.first_name}`)
+      toast.success(`Payroll generated for ${targetEmployee.firstName || targetEmployee.first_name}`)
       loadData()
     } catch (e) {
       toast.error(e.message || 'Failed to generate payroll')
@@ -305,7 +305,7 @@ const Payroll = () => {
                     style={{ width: '100%', padding: '12px 16px', borderRadius: 14, border: '1.5px solid #E2E8F0', background: '#fff', fontSize: 14, fontWeight: 700, color: '#1E293B', outline: 'none', appearance: 'none', backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%237C3AED%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '16px' }}>
                     <option value="">Select an employee...</option>
                     {employees.map(emp => (
-                      <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name}</option>
+                      <option key={emp.id} value={emp.id}>{emp.firstName || emp.first_name} {emp.lastName || emp.last_name}</option>
                     ))}
                   </select>
                 </div>
