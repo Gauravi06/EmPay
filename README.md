@@ -86,18 +86,7 @@ EmPay/
 ```
 
 ---
-Setup:
 
-# Backend (Terminal 1)
-cd EmPay/Backend
-pip install -r requirements.txt
-pip install stripe
-python app.py
-
-# Frontend (Terminal 2)
-cd EmPay/Frontend
-npm install
-npm run dev
 
 ## Roles & Permissions
 
