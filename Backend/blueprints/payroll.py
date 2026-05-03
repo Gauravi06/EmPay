@@ -2,7 +2,10 @@ import calendar as _cal
 import datetime
 from flask import Blueprint, request, jsonify
 from database import get_db
-from utils import token_required, add_notification
+from utils import token_required, add_notification, STRIPE_SECRET_KEY
+import stripe
+
+stripe.api_key = STRIPE_SECRET_KEY
 
 payroll_bp = Blueprint('payroll', __name__)
 
@@ -399,3 +402,41 @@ def set_budget(current_user):
     ''', (year, month, budget))
     conn.commit()
     return jsonify({'success': True, 'message': 'Budget updated'})
+
+@payroll_bp.route('/create-checkout-session', methods=['POST'])
+@token_required
+def create_checkout_session(current_user):
+    data = request.json
+    payroll_id = data.get('payroll_id')
+    
+    conn = get_db()
+    payroll = conn.execute('''
+        SELECT p.*, u.first_name, u.last_name 
+        FROM payroll p JOIN users u ON p.user_id = u.id 
+        WHERE p.id = ?
+    ''', (payroll_id,)).fetchone()
+    
+    if not payroll:
+        return jsonify({'error': 'Payroll not found'}), 404
+
+    try:
+        session = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=[{
+                'price_data': {
+                    'currency': 'inr',
+                    'product_data': {
+                        'name': f"Salary Payout - {payroll['first_name']} {payroll['last_name']}",
+                        'description': f"Period: {payroll['month']}/{payroll['year']}",
+                    },
+                    'unit_amount': int(payroll['net_salary'] * 100), # Amount in paise
+                },
+                'quantity': 1,
+            }],
+            mode='payment',
+            success_url=f"http://localhost:5173/payroll?success=true&payroll_id={payroll_id}",
+            cancel_url="http://localhost:5173/payroll?canceled=true",
+        )
+        return jsonify({'id': session.id})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

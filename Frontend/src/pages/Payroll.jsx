@@ -5,8 +5,9 @@ import Header from '../components/Header'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   DollarSign, TrendingUp, Calendar, Eye, Printer,
-  AlertCircle, Users, FileText, Plus, X, Search, Sparkles
+  AlertCircle, Users, FileText, Plus, X, Search, Sparkles, CreditCard
 } from 'lucide-react'
+import { loadStripe } from '@stripe/stripe-js'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell
@@ -15,6 +16,8 @@ import toast from 'react-hot-toast'
 
 const fmt = (n) => Number(n || 0).toFixed(2)
 const fmtInt = (n) => Number(n || 0).toFixed(0)
+
+const stripePromise = loadStripe('pk_test_51P...'); // Placeholder
 
 const PIE_COLORS = ['#7C3AED', '#38BDF8', '#FB923C', '#10B981', '#F43F5E', '#F59E0B']
 const cardStyle = { background: '#fff', borderRadius: 24, padding: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', border: '1px solid #EBEBF5' }
@@ -108,6 +111,18 @@ const Payroll = () => {
 
   useEffect(() => { if (user) loadData() }, [loadData, user])
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('success') === 'true' && params.get('payroll_id')) {
+      const pId = params.get('payroll_id')
+      updatePayrollStatus(pId, 'paid').then(() => {
+        toast.success('Salary Paid Successfully via Stripe!')
+        window.history.replaceState({}, document.title, "/payroll")
+        loadData()
+      })
+    }
+  }, [updatePayrollStatus, loadData])
+
   const filteredPayrolls = payrolls.filter(p => {
     if (searchTerm && !p.employee_name?.toLowerCase().includes(searchTerm.toLowerCase())) return false
     if (selectedEmployee && p.user_id !== selectedEmployee.id) return false
@@ -172,9 +187,13 @@ const Payroll = () => {
   }
 
   const handleStatusCycle = async (p) => {
+    if (p.status === 'approved') {
+      handlePayNow(p)
+      return
+    }
+
     let nextStatus = 'draft'
     if (p.status === 'pending') nextStatus = 'approved'
-    else if (p.status === 'approved') nextStatus = 'paid'
     else if (p.status === 'draft') nextStatus = 'approved'
 
     try {
@@ -183,6 +202,25 @@ const Payroll = () => {
       loadData()
     } catch (e) {
       toast.error('Failed to update status')
+    }
+  }
+
+  const handlePayNow = async (p) => {
+    try {
+      toast.loading('Initializing Stripe Secure Payment...')
+      const res = await fetch(`http://localhost:5000/api/payroll/create-checkout-session`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${useAuthStore.getState().token}` 
+        },
+        body: JSON.stringify({ payroll_id: p.id })
+      })
+      const { id } = await res.json()
+      const stripe = await stripePromise
+      await stripe.redirectToCheckout({ sessionId: id })
+    } catch (e) {
+      toast.error('Payment initialization failed')
     }
   }
 
