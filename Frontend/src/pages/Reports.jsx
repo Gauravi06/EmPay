@@ -21,9 +21,10 @@ const PIE_COLORS = ['#7C3AED', '#38BDF8', '#FB923C', '#10B981', '#F43F5E', '#F59
 const cardStyle = { background: '#fff', borderRadius: 24, padding: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', border: '1px solid #EBEBF5' }
 
 const Reports = () => {
-  const { user, fetchEmployees, fetchPayrolls, hasPermission } = useAuthStore()
+  const { user, fetchEmployees, fetchAllPayrolls, fetchReportsSummary, hasPermission } = useAuthStore()
   const [employees, setEmployees] = useState([])
   const [payrolls, setPayrolls] = useState([])
+  const [summary, setSummary] = useState({ monthlyBudget: 0 })
   const [reportType, setReportType] = useState('salary')
   const [selectedEmployee, setSelectedEmployee] = useState(null)
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
@@ -31,14 +32,15 @@ const Reports = () => {
 
   useEffect(() => {
     if (user) {
-      Promise.all([fetchEmployees(), fetchPayrolls()])
-        .then(([emps, pays]) => {
+      Promise.all([fetchEmployees(), fetchAllPayrolls(), fetchReportsSummary()])
+        .then(([emps, pays, summ]) => {
           setEmployees(emps || [])
           setPayrolls(pays || [])
+          setSummary(summ || { monthlyBudget: 0 })
         })
-        .catch(() => { })
+        .catch((e) => { console.error('Reports load error:', e) })
     }
-  }, [user?.id, fetchEmployees, fetchPayrolls])
+  }, [user?.id, fetchEmployees, fetchAllPayrolls, fetchReportsSummary])
 
   const isAdminOrPayroll = user?.role === ROLES.ADMIN || user?.role === ROLES.PAYROLL_OFFICER
 

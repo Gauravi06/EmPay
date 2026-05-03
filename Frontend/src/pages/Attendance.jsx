@@ -363,8 +363,8 @@ const CheckInOutPanel = ({ onCheckIn, onCheckOut, todayRecord, loading }) => {
 }
 
 /* ─── Manual Entry Modal ─── */
-const ManualEntryModal = ({ onClose, onSave, userId, employees, isAdminOrHR }) => {
-  const [form, setForm] = useState({
+const ManualEntryModal = ({ onClose, onSave, userId, employees, isAdminOrHR, initialData }) => {
+  const [form, setForm] = useState(initialData || {
     employee_id: userId || '',
     date: format(new Date(), 'yyyy-MM-dd'),
     check_in: '',
@@ -454,7 +454,7 @@ const ManualEntryModal = ({ onClose, onSave, userId, employees, isAdminOrHR }) =
 }
 
 /* ─── HR Employee History Modal ─── */
-const EmployeeHistoryModal = ({ emp, onClose, getMonthlyAttendance }) => {
+const EmployeeHistoryModal = ({ emp, onClose, getMonthlyAttendance, onEdit, isAdmin }) => {
   const [month, setMonth] = useState(new Date())
   const [records, setRecords] = useState([])
   const [loading, setLoading] = useState(false)
@@ -527,8 +527,8 @@ const EmployeeHistoryModal = ({ emp, onClose, getMonthlyAttendance }) => {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#F8FAFC', borderBottom: '1.5px solid #F1F5F9', position: 'sticky', top: 0, zIndex: 5 }}>
-                {['Date', 'Check In', 'Check Out', 'Work Hours', 'Overtime', 'Status'].map(h => (
-                  <th key={h} style={{ padding: '10px 18px', textAlign: 'left', fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>{h}</th>
+                {['Date', 'Check In', 'Check Out', 'Work Hours', 'Overtime', 'Status', isAdmin ? 'Actions' : ''].filter(Boolean).map(h => (
+                  <th key={h} style={{ padding: '10px 18px', textAlign: h === 'Actions' ? 'right' : 'left', fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -604,6 +604,14 @@ const EmployeeHistoryModal = ({ emp, onClose, getMonthlyAttendance }) => {
                             : <span style={{ color: '#D1D5DB' }}>—</span>}
                         </td>
                         <td style={{ padding: '12px 18px' }}><StatusBadge status={status} /></td>
+                        {isAdmin && (
+                          <td style={{ padding: '12px 18px', textAlign: 'right' }}>
+                            <button onClick={() => onEdit({ ...rec, employee_id: emp.id })}
+                              style={{ padding: '6px', borderRadius: 8, border: 'none', background: '#F5F3FF', color: '#7C3AED', cursor: 'pointer' }}>
+                              <TrendingUp size={14} style={{ transform: 'rotate(90deg)' }} />
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     )
                   })
@@ -630,6 +638,7 @@ const Attendance = () => {
   const [employees, setEmployees] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [showManual, setShowManual] = useState(false)
+  const [editingRecord, setEditingRecord] = useState(null)
   const [adminDate, setAdminDate] = useState(new Date())
   const [allAttendance, setAllAttendance] = useState([])
   const [empMonth, setEmpMonth] = useState(new Date())
@@ -736,6 +745,7 @@ const Attendance = () => {
       await markAttendance(empId, form.date, form.check_in, form.check_out || null, form.break_time)
       toast.success('Attendance saved')
       setShowManual(false)
+      setEditingRecord(null)
       load()
     } catch (e) { toast.error(e.message || 'Failed to save') }
   }
@@ -797,6 +807,11 @@ const Attendance = () => {
             emp={historyEmp}
             onClose={() => setHistoryEmp(null)}
             getMonthlyAttendance={getMonthlyAttendance}
+            isAdmin={isAdminOrHR}
+            onEdit={(rec) => {
+              setEditingRecord(rec)
+              setShowManual(true)
+            }}
           />
         )}
 
@@ -1240,11 +1255,15 @@ const Attendance = () => {
       {/* Manual Entry Modal */}
       {showManual && (
         <ManualEntryModal
-          onClose={() => setShowManual(false)}
-          onSave={handleManualSave}
           userId={user?.id}
           employees={employees}
           isAdminOrHR={isAdminOrHR}
+          initialData={editingRecord}
+          onClose={() => {
+            setShowManual(false)
+            setEditingRecord(null)
+          }}
+          onSave={handleManualSave}
         />
       )}
     </div>

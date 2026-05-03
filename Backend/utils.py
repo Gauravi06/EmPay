@@ -4,7 +4,7 @@ import json
 from functools import wraps
 from flask import request, jsonify, current_app
 
-SECRET_KEY = 'empay-secret-key-123' # Should be in config
+SECRET_KEY = 'your-secret-key-here' # Should be in config
 
 def _to_camel(snake):
     """Convert snake_case to camelCase."""
@@ -83,14 +83,14 @@ if TEST_MODE:
     # Virtual Testing Inbox (Check at: https://ethereal.email/messages)
     SMTP_SERVER = "smtp.ethereal.email"
     SMTP_PORT = 587
-    SMTP_USER = "randy.gibson72@ethereal.email"
-    SMTP_PASS = "Fw7CDsYapz8eM6s9Hr"
+    SMTP_USER = "placeholder@ethereal.email"
+    SMTP_PASS = "placeholder-pass"
 else:
     # Real Gmail Mode
     SMTP_SERVER = "smtp.gmail.com"
     SMTP_PORT = 587
-    SMTP_USER = "swanu647@gmail.com"  # ✅ Your Gmail
-    SMTP_PASS = "jvqe iqbo qqyu urvl"  # ✅ Your New App Password
+    SMTP_USER = "your-email@gmail.com"  # ✅ Your Gmail
+    SMTP_PASS = "your-app-password"  # ✅ Your New App Password
 # ---------------------------
 
 def send_email(to_email, subject, body):
