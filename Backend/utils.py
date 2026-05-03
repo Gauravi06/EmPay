@@ -116,6 +116,7 @@ def send_email(to_email, subject, body):
             server.send_message(msg)
             
         print(f"[SUCCESS] Email sent to {to_email}\n")
+    except Exception as e:
         print(f"[ERROR] Failed to send email: {e}")
         print(f"Check your SMTP_USER and SMTP_PASS in Backend/utils.py\n")
 
