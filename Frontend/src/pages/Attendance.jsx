@@ -40,6 +40,12 @@ const nowMinutes = () => {
   return toMinutes(n.getHours(), n.getMinutes())
 }
 
+const timeToMins = (timeStr) => {
+  if (!timeStr) return 0
+  const [h, m] = timeStr.split(':').map(Number)
+  return toMinutes(h, m)
+}
+
 /* ─── Status dot ─── */
 const StatusDot = ({ status }) => {
   if (status === 'present') return <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#10B981', boxShadow: '0 0 0 3px #10B98120', display: 'inline-block' }} title="Present" />
@@ -217,10 +223,12 @@ const RingProgress = ({ pct, size = 56, stroke = 5, color = '#7C3AED' }) => {
 }
 
 /* ─── Time window banner ─── */
-const TimeWindowBanner = ({ now }) => {
+const TimeWindowBanner = ({ now, officeHours }) => {
   const mins = toMinutes(now.getHours(), now.getMinutes())
-  const beforeWork = mins < WORK_START_MIN
-  const afterWork = mins >= WORK_END_MIN
+  const startMins = timeToMins(officeHours.start)
+  const endMins = timeToMins(officeHours.end)
+  const beforeWork = mins < startMins
+  const afterWork = mins >= endMins
 
   if (!beforeWork && !afterWork) return null
 
@@ -234,8 +242,8 @@ const TimeWindowBanner = ({ now }) => {
     }}>
       <Clock size={15} style={{ flexShrink: 0 }} />
       {beforeWork
-        ? `Check-in opens at 9:00 AM · Office hours: 9:00 AM – 6:00 PM`
-        : `Office hours ended at 6:00 PM · See you tomorrow!`}
+        ? `Check-in opens at ${officeHours.start} · Office hours: ${officeHours.start} – ${officeHours.end}`
+        : `Office hours ended at ${officeHours.end} · See you tomorrow!`}
     </div>
   )
 }
@@ -271,7 +279,7 @@ const CheckInOutPanel = ({ onCheckIn, onCheckOut, todayRecord, loading }) => {
           {format(now, 'HH:mm:ss')}
         </div>
         <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 3 }}>{format(now, 'EEEE, d MMMM yyyy')}</div>
-        <div style={{ fontSize: 11, color: '#CBD5E1', marginTop: 2 }}>Office hours: 09:00 – 18:00</div>
+        <div style={{ fontSize: 11, color: '#CBD5E1', marginTop: 2 }}>Office hours: {officeSettings.start} – {officeSettings.end}</div>
       </div>
 
       {/* Status indicator */}
@@ -632,7 +640,21 @@ const Attendance = () => {
   const [employees, setEmployees] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [showManual, setShowManual] = useState(false)
+  const [showOfficeSettings, setShowOfficeSettings] = useState(false)
   const [editingRecord, setEditingRecord] = useState(null)
+  
+  const [officeSettings, setOfficeSettings] = useState(() => {
+    const saved = localStorage.getItem('empay_office_hours')
+    return saved ? JSON.parse(saved) : { start: '09:00', end: '18:00' }
+  })
+
+  const saveOfficeSettings = (newSettings) => {
+    setOfficeSettings(newSettings)
+    localStorage.setItem('empay_office_hours', JSON.stringify(newSettings))
+    toast.success('Office hours updated')
+    setShowOfficeSettings(false)
+  }
+
   const [adminDate, setAdminDate] = useState(new Date())
   const [allAttendance, setAllAttendance] = useState([])
   const [empMonth, setEmpMonth] = useState(new Date())
@@ -679,15 +701,18 @@ const Attendance = () => {
   const todayStr = format(new Date(), 'yyyy-MM-dd')
   const todayRecord = monthlyAttendance.find(r => r.date === todayStr)
 
-  /* ── Check In handler — enforces 09:00–18:00 ── */
+  /* ── Check In handler — enforces dynamic office hours ── */
   const handleCheckIn = async () => {
     const mins = nowMinutes()
-    if (mins < WORK_START_MIN) {
-      toast.error('Check-in is only available from 9:00 AM')
+    const startMins = timeToMins(officeSettings.start)
+    const endMins = timeToMins(officeSettings.end)
+
+    if (mins < startMins) {
+      toast.error(`Check-in is only available from ${officeSettings.start}`)
       return
     }
-    if (mins >= WORK_END_MIN) {
-      toast.error('Office hours have ended (6:00 PM). Cannot check in.')
+    if (mins >= endMins) {
+      toast.error(`Office hours have ended (${officeSettings.end}). Cannot check in.`)
       return
     }
     if (todayRecord?.check_in) {
@@ -704,7 +729,7 @@ const Attendance = () => {
     finally { setActionLoading(false) }
   }
 
-  /* ── Check Out handler — enforces within 09:00–18:00 and must be checked in ── */
+  /* ── Check Out handler — enforces within dynamic office hours ── */
   const handleCheckOut = async () => {
     if (!todayRecord?.check_in) {
       toast.error('You have not checked in yet')
@@ -715,11 +740,14 @@ const Attendance = () => {
       return
     }
     const mins = nowMinutes()
-    if (mins >= WORK_END_MIN) {
-      toast.error('Office hours ended at 6:00 PM. Auto check-out has been applied.')
+    const startMins = timeToMins(officeSettings.start)
+    const endMins = timeToMins(officeSettings.end)
+
+    if (mins >= endMins) {
+      toast.error(`Office hours ended at ${officeSettings.end}. Auto check-out has been applied.`)
       return
     }
-    if (mins < WORK_START_MIN) {
+    if (mins < startMins) {
       toast.error('Cannot check out before office hours begin')
       return
     }
@@ -825,13 +853,22 @@ const Attendance = () => {
                 <Download size={15} /> Export
               </button>
               {(isAdminOrHR) && (
-                <motion.button
-                  whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-                  onClick={() => setShowManual(true)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', fontSize: 13, fontWeight: 800, color: '#fff', background: '#7C3AED', border: 'none', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 14px rgba(124,58,237,0.3)' }}
-                >
-                  <Plus size={15} /> Manual Entry
-                </motion.button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <motion.button
+                    whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                    onClick={() => setShowOfficeSettings(true)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', fontSize: 13, fontWeight: 700, color: '#475569', background: '#fff', border: '1.5px solid #E5E7EB', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    <Clock size={15} /> Office Hours
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                    onClick={() => setShowManual(true)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', fontSize: 13, fontWeight: 800, color: '#fff', background: '#7C3AED', border: 'none', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 14px rgba(124,58,237,0.3)' }}
+                  >
+                    <Plus size={15} /> Manual Entry
+                  </motion.button>
+                </div>
               )}
             </div>
           </div>
@@ -1115,7 +1152,7 @@ const Attendance = () => {
               const workHrsToday = todayRecord?.work_hours || 0
               return (
                 <>
-                  <TimeWindowBanner now={new Date()} />
+                  <TimeWindowBanner now={new Date()} officeHours={officeSettings} />
 
                   {/* Row 1: Quick Check-in + Currently In Office status */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
@@ -1260,6 +1297,44 @@ const Attendance = () => {
           onSave={handleManualSave}
         />
       )}
+      {/* Office Hours Settings Modal */}
+      {showOfficeSettings && (
+        <OfficeSettingsModal
+          current={officeSettings}
+          onClose={() => setShowOfficeSettings(false)}
+          onSave={saveOfficeSettings}
+        />
+      )}
+    </div>
+  )
+}
+
+/* ─── Office Settings Modal ─── */
+const OfficeSettingsModal = ({ current, onClose, onSave }) => {
+  const [form, setForm] = useState(current)
+  const labelStyle = { display: 'block', fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 5 }
+  const fieldStyle = { width: '100%', padding: '9px 14px', borderRadius: 10, border: '1.5px solid #E5E7EB', background: '#F8FAFC', fontSize: 13, fontWeight: 600, color: '#1E293B', fontFamily: 'inherit', outline: 'none' }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}>
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 360, overflow: 'hidden' }}>
+        <div style={{ background: '#0F172A', padding: '16px 24px', color: '#fff', fontWeight: 800, fontSize: 15 }}>Configure Office Hours</div>
+        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div>
+            <label style={labelStyle}>Check-In Opens</label>
+            <input type="time" value={form.start} onChange={e => setForm({ ...form, start: e.target.value })} style={fieldStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>Office Closes (Auto Check-out)</label>
+            <input type="time" value={form.end} onChange={e => setForm({ ...form, end: e.target.value })} style={fieldStyle} />
+          </div>
+          <div style={{ fontSize: 12, color: '#64748B', fontStyle: 'italic' }}>Note: These hours apply globally to all employees for the live check-in button.</div>
+        </div>
+        <div style={{ display: 'flex', gap: 10, padding: '0 24px 24px' }}>
+          <button onClick={onClose} style={{ flex: 1, padding: '10px 16px', border: '1.5px solid #E5E7EB', borderRadius: 10, fontSize: 13, fontWeight: 700, color: '#475569', background: '#fff', cursor: 'pointer' }}>Cancel</button>
+          <button onClick={() => onSave(form)} style={{ flex: 1, padding: '10px 16px', background: '#0F172A', color: '#fff', borderRadius: 10, fontSize: 13, fontWeight: 800, border: 'none', cursor: 'pointer' }}>Save Changes</button>
+        </div>
+      </motion.div>
     </div>
   )
 }
