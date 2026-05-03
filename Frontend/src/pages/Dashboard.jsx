@@ -364,31 +364,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Navigation Hub — As seen in mockup */}
-          <div className="nav-grid mb-10">
-            {[
-              { label: 'Employee Directory', icon: <Users className="w-8 h-8 text-indigo-600" />, path: '/employees' },
-              { label: 'Payroll Management', icon: <DollarSign className="w-8 h-8 text-emerald-600" />, path: '/payroll' },
-              { label: 'Attendance Tracking', icon: <Clock className="w-8 h-8 text-blue-600" />, path: '/attendance' },
-              { label: 'Leave Management', icon: <Calendar className="w-8 h-8 text-purple-600" />, path: '/time-off' },
-              { label: 'Performance Review', icon: <Award className="w-8 h-8 text-amber-600" />, path: '/dashboard' },
-              { label: 'Reports & Analytics', icon: <BarChart3 className="w-8 h-8 text-rose-600" />, path: '/reports' },
-              { label: 'Help & Support', icon: <Shield className="w-8 h-8 text-slate-600" />, path: '/settings' },
-              { label: 'System Settings', icon: <Key className="w-8 h-8 text-indigo-900" />, path: '/settings' },
-            ].map((item, i) => (
-              <motion.div
-                key={i}
-                whileHover={{ y: -5, boxShadow: '0 20px 40px rgba(0,0,0,0.08)' }}
-                onClick={() => navigate(item.path)}
-                className="nav-card"
-              >
-                <div className="p-4 bg-slate-50 rounded-2xl mb-2">
-                  {item.icon}
-                </div>
-                <span className="text-sm font-black text-slate-800 text-center uppercase tracking-wider">{item.label}</span>
-              </motion.div>
-            ))}
-          </div>
+
 
           {/* Stat Cards */}
           <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
