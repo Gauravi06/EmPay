@@ -399,3 +399,20 @@ def set_budget(current_user):
     ''', (year, month, budget))
     conn.commit()
     return jsonify({'success': True, 'message': 'Budget updated'})
+
+@payroll_bp.route('/<int:payroll_id>', methods=['DELETE'])
+@token_required
+def delete_payroll(current_user, payroll_id):
+    if not _role_ok(current_user['role']):
+        return jsonify({'error': 'Unauthorized'}), 403
+        
+    conn = get_db()
+    # Check if exists
+    payroll = conn.execute('SELECT * FROM payroll WHERE id = ?', (payroll_id,)).fetchone()
+    if not payroll:
+        return jsonify({'error': 'Payroll record not found'}), 404
+        
+    conn.execute('DELETE FROM payroll WHERE id = ?', (payroll_id,))
+    conn.commit()
+    
+    return jsonify({'message': 'Payroll record deleted successfully'})

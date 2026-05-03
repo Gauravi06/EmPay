@@ -406,7 +406,11 @@ export const useAuthStore = create(
         return data.users
       },
 
-      getWarnings: () => ({ withoutBank: 0, withoutManager: 0 }),
+      deletePayroll: async (payrollId) => {
+        const { token } = get()
+        return await apiFetch(`/payroll/${payrollId}`, { method: 'DELETE' }, token)
+      },
+
       getEmployerCosts: () => ({ monthly: {}, annual: 0 }),
     }),
     {

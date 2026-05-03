@@ -5,7 +5,7 @@ import Header from '../components/Header'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   DollarSign, TrendingUp, Calendar, Eye, Printer,
-  AlertCircle, Users, FileText, Plus, X, Search, Sparkles
+  AlertCircle, Users, FileText, Plus, X, Search, Sparkles, Trash2
 } from 'lucide-react'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -42,7 +42,7 @@ const StatCard = ({ title, value, icon, badge, badgeColor }) => (
 const Payroll = () => {
   const {
     user, fetchEmployees, fetchPayrolls, fetchAllPayrolls, generatePayroll,
-    updatePayrollStatus, hasPermission
+    updatePayrollStatus, deletePayroll, hasPermission
   } = useAuthStore()
 
   const [payrolls, setPayrolls] = useState([])
@@ -189,6 +189,17 @@ const Payroll = () => {
       loadData()
     } catch (e) {
       toast.error('Failed to update status')
+    }
+  }
+
+  const handleDeletePayroll = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this payroll record?')) return
+    try {
+      await deletePayroll(id)
+      toast.success('Payroll record deleted')
+      loadData()
+    } catch (e) {
+      toast.error(e.message || 'Failed to delete')
     }
   }
 
@@ -408,6 +419,7 @@ const Payroll = () => {
                                       title={p.status==='draft'?'Mark Approved':'Mark Paid'} 
                                     />
                                   )}
+                                  <ActionBtn onClick={() => handleDeletePayroll(p.id)} icon={<Trash2 size={16} />} title="Delete Record" color="#EF4444" />
                                 </>
                               )}
                             </div>
