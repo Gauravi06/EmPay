@@ -116,6 +116,20 @@ def send_email(to_email, subject, body):
             server.send_message(msg)
             
         print(f"[SUCCESS] Email sent to {to_email}\n")
-    except Exception as e:
         print(f"[ERROR] Failed to send email: {e}")
         print(f"Check your SMTP_USER and SMTP_PASS in Backend/utils.py\n")
+
+def add_notification(user_id, title, message, type='info'):
+    """
+    Creates a new notification record in the database.
+    """
+    from database import get_db
+    try:
+        conn = get_db()
+        conn.execute('''
+            INSERT INTO notifications (user_id, title, message, type)
+            VALUES (?, ?, ?, ?)
+        ''', (user_id, title, message, type))
+        conn.commit()
+    except Exception as e:
+        print(f"[ERROR] add_notification: {e}")

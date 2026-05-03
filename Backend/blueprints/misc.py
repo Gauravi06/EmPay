@@ -188,3 +188,44 @@ def create_announcement(current_user):
     )
     conn.commit()
     return jsonify({'message': 'Announcement posted'})
+
+# ── Notifications ─────────────────────────────────────────────────────────────
+
+@misc_bp.route('/notifications', methods=['GET'])
+@token_required
+def get_notifications(current_user):
+    conn = get_db()
+    # Admins/HR/Payroll see all activity, Employees see their own
+    if current_user['role'] in [ADMIN, HR, PAYROLL]:
+        rows = conn.execute('''
+            SELECT n.*, u.first_name || ' ' || u.last_name AS user_name
+            FROM notifications n
+            LEFT JOIN users u ON n.user_id = u.id
+            ORDER BY n.created_at DESC
+            LIMIT 50
+        ''').fetchall()
+    else:
+        rows = conn.execute('''
+            SELECT * FROM notifications 
+            WHERE user_id = ? 
+            ORDER BY created_at DESC 
+            LIMIT 50
+        ''', (current_user['id'],)).fetchall()
+    
+    return jsonify({'notifications': [dict(r) for r in rows]})
+
+@misc_bp.route('/notifications/<int:notif_id>/read', methods=['PUT'])
+@token_required
+def mark_read(current_user, notif_id):
+    conn = get_db()
+    conn.execute('UPDATE notifications SET is_read = 1 WHERE id = ?', (notif_id,))
+    conn.commit()
+    return jsonify({'success': True})
+
+@misc_bp.route('/notifications/read-all', methods=['PUT'])
+@token_required
+def mark_all_read(current_user):
+    conn = get_db()
+    conn.execute('UPDATE notifications SET is_read = 1 WHERE user_id = ?', (current_user['id'],))
+    conn.commit()
+    return jsonify({'success': True})

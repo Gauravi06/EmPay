@@ -2,7 +2,7 @@ import calendar as _cal
 import datetime
 from flask import Blueprint, request, jsonify
 from database import get_db
-from utils import token_required
+from utils import token_required, add_notification
 
 payroll_bp = Blueprint('payroll', __name__)
 
@@ -184,6 +184,14 @@ def generate_payroll(current_user):
         WHERE p.id = ?
     ''', (cursor.lastrowid,)).fetchone()
 
+    # Notify User
+    add_notification(
+        employee_id,
+        "Payroll Generated",
+        f"Your payroll for {MONTH_NAMES[month]} {year} has been generated and is pending approval.",
+        "info"
+    )
+
     return jsonify({
         'message': 'Payroll generated successfully',
         'payroll': _normalize(record),
@@ -252,6 +260,18 @@ def update_payroll_status(current_user, payroll_id):
         (status, payment_date, payroll_id)
     )
     conn.commit()
+
+    # If marked as paid, notify employee
+    if status == 'paid':
+        p_rec = conn.execute('SELECT user_id, month, year FROM payroll WHERE id = ?', (payroll_id,)).fetchone()
+        if p_rec:
+            add_notification(
+                p_rec['user_id'],
+                "Salary Credited",
+                f"Your salary for {MONTH_NAMES.get(p_rec['month'], '')} {p_rec['year']} has been marked as PAID.",
+                "success"
+            )
+
     return jsonify({'message': f'Status updated to {status}'})
 
 

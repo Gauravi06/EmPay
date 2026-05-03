@@ -1,7 +1,8 @@
 from flask import Blueprint, request, jsonify
 import json
 from database import get_db
-from utils import token_required, _to_camel
+from database import get_db
+from utils import token_required, _to_camel, add_notification
 
 time_off_bp = Blueprint('time_off', __name__)
 
@@ -43,6 +44,15 @@ def request_time_off(current_user):
         INSERT INTO time_off (user_id, type, start_date, end_date, days, reason)
         VALUES (?, ?, ?, ?, ?, ?)
     ''', (current_user['id'], data['type'], data['startDate'], data['endDate'], data['days'], data['reason']))
+    
+    # Notify Admin/HR
+    add_notification(
+        current_user['id'], 
+        "Leave Request Submitted", 
+        f"{current_user['firstName']} {current_user['lastName']} requested {data['days']} days of {data['type']}.",
+        "info"
+    )
+
     conn.commit()
     return jsonify({'message': 'Request submitted successfully'}), 201
 
@@ -72,6 +82,15 @@ def approve_time_off(current_user, request_id):
         conn.execute('UPDATE users SET time_off_used = ? WHERE id = ?', (json.dumps(used), req['user_id']))
 
     conn.commit()
+
+    # Notify User
+    add_notification(
+        req['user_id'],
+        f"Leave Request {status.title()}",
+        f"Your {req['type']} leave request for {req['start_date']} has been {status}.",
+        "success" if status == 'approved' else "warning"
+    )
+
     return jsonify({'message': f'Request {status} successfully'})
 
 @time_off_bp.route('/allocate', methods=['POST'])

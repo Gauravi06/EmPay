@@ -16,11 +16,56 @@ const Header = () => {
 
   const companyName = (() => { try { return localStorage.getItem('empay_company_name') } catch { return null } })()
 
+  const [notifications, setNotifications] = useState([])
+  const [showNotifs, setShowNotifs] = useState(false)
+  const notifRef = useRef(null)
+
+  const fetchNotifs = useCallback(async () => {
+    try {
+      const res = await fetch('http://localhost:5000/api/notifications', {
+        headers: { Authorization: `Bearer ${useAuthStore.getState().token}` }
+      })
+      const data = await res.json()
+      setNotifications(data.notifications || [])
+    } catch {}
+  }, [])
+
   useEffect(() => {
-    const handle = (e) => { if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setIsOpen(false) }
+    fetchNotifs()
+    const iv = setInterval(fetchNotifs, 30000) // Poll every 30s
+    return () => clearInterval(iv)
+  }, [fetchNotifs])
+
+  useEffect(() => {
+    const handle = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setIsOpen(false)
+      if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotifs(false)
+    }
     document.addEventListener('mousedown', handle)
     return () => document.removeEventListener('mousedown', handle)
   }, [])
+
+  const markRead = async (id) => {
+    try {
+      await fetch(`http://localhost:5000/api/notifications/${id}/read`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${useAuthStore.getState().token}` }
+      })
+      fetchNotifs()
+    } catch {}
+  }
+
+  const markAllRead = async () => {
+    try {
+      await fetch('http://localhost:5000/api/notifications/read-all', {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${useAuthStore.getState().token}` }
+      })
+      fetchNotifs()
+    } catch {}
+  }
+
+  const unreadCount = notifications.filter(n => !n.is_read).length
 
   const handleLogout = () => { setIsOpen(false); logout(); navigate('/login') }
 
@@ -105,10 +150,70 @@ const Header = () => {
 
       {/* Action Icons */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button style={iconBtn}>
-          <Bell size={20} strokeWidth={2.2} color="#475569" />
-          <span style={{ position: 'absolute', top: 8, right: 8, width: 8, height: 8, background: '#7C3AED', borderRadius: '50%', border: '2px solid #fff' }} />
-        </button>
+        <div style={{ position: 'relative' }} ref={notifRef}>
+          <button style={iconBtn} onClick={() => setShowNotifs(!showNotifs)}>
+            <Bell size={20} strokeWidth={2.2} color="#475569" />
+            {unreadCount > 0 && (
+              <span style={{ position: 'absolute', top: 8, right: 8, width: 14, height: 14, background: '#EF4444', color: '#fff', borderRadius: '50%', border: '2px solid #fff', fontSize: 8, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+          
+          <AnimatePresence>
+            {showNotifs && (
+              <motion.div
+                initial={{ opacity: 0, y: 12, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 12, scale: 0.95 }}
+                style={{
+                  position: 'absolute', right: 0, top: 'calc(100% + 12px)',
+                  width: 340, background: '#fff', borderRadius: 20,
+                  boxShadow: '0 20px 40px rgba(0,0,0,0.15)', border: '1px solid #F1F5F9',
+                  zIndex: 200, overflow: 'hidden'
+                }}
+              >
+                <div style={{ padding: '16px 20px', borderBottom: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#F8F9FF' }}>
+                  <span style={{ fontSize: 14, fontWeight: 900, color: '#0F172A' }}>Activity Log</span>
+                  <button onClick={markAllRead} style={{ fontSize: 11, fontWeight: 800, color: '#7C3AED', background: 'none', border: 'none', cursor: 'pointer' }}>Mark all as read</button>
+                </div>
+                <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+                  {notifications.length === 0 ? (
+                    <div style={{ padding: 40, textAlign: 'center', color: '#94A3B8', fontSize: 13 }}>No recent activity</div>
+                  ) : notifications.map(n => (
+                    <div 
+                      key={n.id} 
+                      onClick={() => !n.is_read && markRead(n.id)}
+                      style={{ 
+                        padding: '14px 20px', borderBottom: '1px solid #F8FAFC', 
+                        background: n.is_read ? '#fff' : '#F5F3FF', cursor: 'pointer',
+                        transition: 'background 0.2s'
+                      }}
+                    >
+                      <div style={{ display: 'flex', gap: 12 }}>
+                        <div style={{ 
+                          width: 8, height: 8, borderRadius: '50%', marginTop: 5, flexShrink: 0,
+                          background: n.type === 'success' ? '#10B981' : n.type === 'warning' ? '#F59E0B' : '#7C3AED' 
+                        }} />
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 800, color: '#1E293B' }}>{n.title}</div>
+                          <div style={{ fontSize: 12, color: '#64748B', marginTop: 2, lineHeight: 1.4 }}>{n.message}</div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+                            <span style={{ fontSize: 10, color: '#94A3B8', fontWeight: 600 }}>{new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            {n.user_name && <span style={{ fontSize: 10, fontWeight: 700, color: '#7C3AED' }}>{n.user_name}</span>}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ padding: '12px', textAlign: 'center', borderTop: '1px solid #F1F5F9' }}>
+                  <button style={{ width: '100%', padding: '8px', background: '#F8FAFC', border: 'none', borderRadius: 10, fontSize: 11, fontWeight: 700, color: '#64748B', cursor: 'pointer' }}>View All History</button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
         <button style={iconBtn}>
           <Mail size={20} strokeWidth={2.2} color="#475569" />
         </button>
