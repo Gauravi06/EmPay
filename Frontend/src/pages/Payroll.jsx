@@ -60,7 +60,7 @@ const Payroll = () => {
 
   const fetchBudget = useCallback(async (year, month) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/budget?year=${year}&month=${month}`, {
+      const res = await fetch(`http://localhost:5000/api/payroll/budget?year=${year}&month=${month}`, {
         headers: { Authorization: `Bearer ${useAuthStore.getState().token}` }
       })
       const data = await res.json()
@@ -70,7 +70,7 @@ const Payroll = () => {
 
   const updateBudget = async () => {
     try {
-      await fetch(`http://localhost:5000/api/budget`, {
+      await fetch(`http://localhost:5000/api/payroll/budget`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
