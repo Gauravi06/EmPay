@@ -49,9 +49,41 @@ const Payroll = () => {
   const [selectedPayroll, setSelectedPayroll] = useState(null)
   const [showPayslip, setShowPayslip] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  
+  const [monthlyBudget, setMonthlyBudget] = useState(0)
+  const [isEditingBudget, setIsEditingBudget] = useState(false)
+  const [showAdjustmentModal, setShowAdjustmentModal] = useState(false)
+  const [adjustmentData, setAdjustmentData] = useState(null)
 
   const isAdminOrPayroll = user?.role === ROLES.ADMIN || user?.role === ROLES.PAYROLL_OFFICER
   const canGeneratePayroll = hasPermission(MODULES.PAYROLL, PERMISSIONS.CREATE)
+
+  const fetchBudget = useCallback(async (year, month) => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/budget?year=${year}&month=${month}`, {
+        headers: { Authorization: `Bearer ${useAuthStore.getState().token}` }
+      })
+      const data = await res.json()
+      setMonthlyBudget(data.budget || 0)
+    } catch {}
+  }, [])
+
+  const updateBudget = async () => {
+    try {
+      await fetch(`http://localhost:5000/api/budget`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${useAuthStore.getState().token}` 
+        },
+        body: JSON.stringify({ year: selectedYear, month: selectedMonth, budget: Number(monthlyBudget) })
+      })
+      toast.success('Budget updated successfully')
+      setIsEditingBudget(false)
+    } catch {
+      toast.error('Failed to update budget')
+    }
+  }
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -62,12 +94,13 @@ const Payroll = () => {
       ])
       setPayrolls(pList || [])
       setEmployees(eList || [])
+      fetchBudget(selectedYear, selectedMonth)
     } catch (e) {
       toast.error('Failed to load payroll data')
     } finally {
       setLoading(false)
     }
-  }, [fetchPayrolls, fetchEmployees])
+  }, [fetchPayrolls, fetchEmployees, fetchBudget, selectedYear, selectedMonth])
 
   useEffect(() => { if (user) loadData() }, [loadData, user])
 
@@ -76,6 +109,9 @@ const Payroll = () => {
     if (selectedEmployee && p.user_id !== selectedEmployee.id) return false
     return true
   })
+
+  const totalPayrollCost = filteredPayrolls.reduce((sum, p) => sum + (p.net_pay || 0), 0)
+  const budgetUtilization = monthlyBudget > 0 ? (totalPayrollCost / monthlyBudget) * 100 : 0
 
   const handleGeneratePayroll = async () => {
     const targetEmployee = selectedEmployee
@@ -105,299 +141,247 @@ const Payroll = () => {
   }
 
   const handleStatusCycle = async (p) => {
-    const nextStatus = p.status === 'draft' ? 'approved' : 'paid'
+    let nextStatus = 'draft'
+    if (p.status === 'pending') nextStatus = 'approved'
+    else if (p.status === 'approved') nextStatus = 'paid'
+    else if (p.status === 'draft') nextStatus = 'approved'
+
     try {
       await updatePayrollStatus(p.id, nextStatus)
-      toast.success(`Payroll marked as ${nextStatus}`)
+      toast.success(`Payroll ${nextStatus.charAt(0).toUpperCase() + nextStatus.slice(1)}`)
       loadData()
-    } catch (e) { toast.error(e.message || 'Failed to update status') }
+    } catch (e) {
+      toast.error('Failed to update status')
+    }
+  }
+
+  const handleSaveAdjustment = async () => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/payroll/${adjustmentData.id}`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${useAuthStore.getState().token}` 
+        },
+        body: JSON.stringify(adjustmentData)
+      })
+      if (res.ok) {
+        toast.success('Adjustments saved')
+        setShowAdjustmentModal(false)
+        loadData()
+      } else {
+        toast.error('Failed to save adjustments')
+      }
+    } catch {
+      toast.error('Network error')
+    }
   }
 
   const handlePrintPayslip = (p) => {
-    const win = window.open('', '_blank')
-    win.document.write(`
-      <html><head><title>Payslip - ${p.employee_name}</title>
-      <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
-        body{font-family:'Inter', sans-serif;margin:60px;color:#1e293b;line-height:1.5}
-        .header{text-align:center;margin-bottom:40px;border-bottom:2px solid #7c3aed;padding-bottom:20px}
-        h1{color:#7c3aed;font-weight:900;margin:0;font-size:32px;letter-spacing:-1px}
-        .period{color:#64748b;font-weight:600;margin-top:5px}
-        .info-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin:30px 0;background:#f8fafc;padding:25px;border-radius:15px}
-        .info-item{display:flex;flex-direction:column}
-        .label{font-size:10px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:0.1em}
-        .value{font-weight:700;color:#0f172a;font-size:15px;margin-top:4px}
-        table{width:100%;border-collapse:collapse;margin:30px 0;box-shadow:0 1px 3px rgba(0,0,0,0.1);border-radius:10px;overflow:hidden}
-        th,td{padding:15px;text-align:left;border-bottom:1px solid #f1f5f9}
-        th{background:#f1f5f9;font-weight:800;color:#64748b;font-size:11px;text-transform:uppercase}
-        .right{text-align:right}
-        .total-row{background:#fffbeb;font-weight:800}
-        .net-pay-box{margin-top:40px;padding:30px;background:linear-gradient(135deg, #7c3aed, #6d28d9);color:white;border-radius:20px;text-align:right}
-        .net-label{font-size:12px;font-weight:700;opacity:0.8;text-transform:uppercase}
-        .net-value{font-size:36px;font-weight:900;margin-top:5px}
-        .footer{text-align:center;font-size:11px;color:#94a3b8;margin-top:60px;border-top:1px solid #f1f5f9;padding-top:20px}
-        @media print{button{display:none} body{margin:20px}}
-      </style></head><body>
-      <div class="header">
-        <h1>EmPay</h1>
-        <div class="period">Salary Slip: ${p.period}</div>
-      </div>
-      <div class="info-grid">
-        <div class="info-item"><span class="label">Employee</span><span class="value">${p.employee_name}</span></div>
-        <div class="info-item"><span class="label">Emp Code</span><span class="value">${p.employee_code}</span></div>
-        <div class="info-item"><span class="label">Department</span><span class="value">${p.department || 'General'}</span></div>
-        <div class="info-item"><span class="label">Location</span><span class="value">${p.location || 'Head Office'}</span></div>
-        <div class="info-item"><span class="label">UAN No</span><span class="value">${p.uan || 'N/A'}</span></div>
-        <div class="info-item"><span class="label">Days Worked</span><span class="value">${p.days_present}/${p.working_days}</span></div>
-      </div>
-      <table>
-        <thead>
-          <tr><th colspan="2">Earnings</th><th colspan="2">Deductions</th></tr>
-          <tr><th>Component</th><th class="right">Amount</th><th>Component</th><th class="right">Amount</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>Basic Salary</td><td class="right">₹${fmt(p.basic_salary)}</td><td>PF Employee</td><td class="right">₹${fmt(p.pf_employee)}</td></tr>
-          <tr><td>HRA</td><td class="right">₹${fmt(p.house_rent_allowance)}</td><td>Professional Tax</td><td class="right">₹${fmt(p.professional_tax)}</td></tr>
-          <tr><td>Standard Allowance</td><td class="right">₹${fmt(p.standard_allowance)}</td><td>TDS</td><td class="right">₹${fmt(p.tds)}</td></tr>
-          <tr><td>Performance Bonus</td><td class="right">₹${fmt(p.performance_bonus)}</td><td></td><td></td></tr>
-          <tr><td>LTA</td><td class="right">₹${fmt(p.leave_travel_allowance)}</td><td></td><td></td></tr>
-          <tr class="total-row"><td>Gross Total</td><td class="right">₹${fmt(p.gross_wage)}</td><td>Total Deductions</td><td class="right">₹${fmt(p.total_deductions)}</td></tr>
-        </tbody>
-      </table>
-      <div class="net-pay-box">
-        <div class="net-label">Net Payable Amount</div>
-        <div class="net-value">₹${fmt(p.net_pay)}</div>
-        <div style="font-size:12px;opacity:0.7;margin-top:5px">(Gross Earnings - Total Deductions)</div>
-      </div>
-      <div class="footer">
-        <p>This is a computer generated document and does not require a physical signature.</p>
-        <p>© 2024 EmPay HRMS. All rights reserved.</p>
-      </div>
-      <br><button onclick="window.print()" style="padding:12px 24px;background:#7c3aed;color:white;border:none;border-radius:10px;cursor:pointer;font-weight:bold;display:block;margin:0 auto">Print Payslip</button>
-      </body></html>`)
-    win.document.close()
+    toast.success('Preparing high-quality PDF statement...')
+    setTimeout(() => window.print(), 1000)
   }
 
-  const monthlyChartData = Array.from({ length: 12 }, (_, i) => {
-    const mp = payrolls.filter(p => p.year === selectedYear && p.month === i + 1)
-    return {
-      month: new Date(selectedYear, i).toLocaleString('default', { month: 'short' }),
-      gross: mp.reduce((s, p) => s + (p.gross_wage || 0), 0),
-      net: mp.reduce((s, p) => s + (p.net_pay || 0), 0),
-      deductions: mp.reduce((s, p) => s + (p.total_deductions || 0), 0)
-    }
-  })
-
-  const deptMap = employees.reduce((acc, e) => {
-    const d = e.department || 'General'
-    acc[d] = (acc[d] || 0) + 1
-    return acc
-  }, {})
-  const pieData = Object.entries(deptMap).map(([name, value], i) => ({
-    name, value, color: PIE_COLORS[i % PIE_COLORS.length]
-  }))
-
-  const currentMonthGross = monthlyChartData[new Date().getMonth()]?.gross || 0
-  const thisMonthCount = payrolls.filter(p => p.year === selectedYear && p.month === selectedMonth).length
-
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#F8FAFC', fontFamily: "'DM Sans', sans-serif" }}>
+    <div className="min-h-screen bg-gradient-to-br from-[#F8FAFC] to-[#F1F5F9]">
       <Sidebar />
-      <div style={{ flex: 1, marginLeft: 240, transition: 'margin-left 0.3s' }}>
+      <div style={{ marginLeft: 220 }}>
         <Header />
-        <main style={{ padding: '96px 32px 40px' }}>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
-            <div>
-              <motion.h1 initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
-                style={{ fontSize: 36, fontVariationSettings: '"wght" 900', color: '#0F172A', margin: 0, letterSpacing: '-1.5px' }}>
-                Payroll Management
-              </motion.h1>
-              <p style={{ margin: '8px 0 0', color: '#64748B', fontSize: 16, fontWeight: 500 }}>Process salaries and visualize payroll distribution</p>
-            </div>
-            {canGeneratePayroll && (
-              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                onClick={handleGeneratePayroll} disabled={generating}
-                style={{ ...btnPrimary, opacity: generating ? 0.7 : 1 }}>
-                {generating ? <Sparkles size={16} className="animate-spin" /> : <Plus size={16} />}
-                {generating ? 'Processing...' : 'Generate Payroll'}
-              </motion.button>
-            )}
-          </div>
-
-          <div style={{ display: 'flex', gap: 20, marginBottom: 32, flexWrap: 'wrap' }}>
-            <StatCard title="Team Strength" value={employees.length} icon="👥" badge="Active" badgeColor="#10B981" />
-            <StatCard title="Monthly Budget" value={`₹${(currentMonthGross / 1000).toFixed(1)}k`} icon="💰" badge="Gross" badgeColor="#3B82F6" />
-            <StatCard title="Records Vault" value={payrolls.length} icon="📄" badge="Total" badgeColor="#7C3AED" />
-            <StatCard title="Monthly Cycle" value={thisMonthCount} icon="📅" badge={thisMonthCount > 0 ? 'Cycle Active' : 'Waiting'} badgeColor={thisMonthCount > 0 ? '#10B981' : '#F59E0B'} />
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 24, marginBottom: 32 }}>
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-              style={{ ...cardStyle, position: 'relative', overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', top: -40, right: -40, width: 200, height: 200, borderRadius: '50%', background: 'linear-gradient(135deg, rgba(124,58,237,0.1) 0%, transparent 80%)', pointerEvents: 'none' }} />
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
-                <div>
-                  <div style={{ fontSize: 20, fontWeight: 900, color: '#0F172A', letterSpacing: '-0.5px' }}>Financial Pulse</div>
-                  <div style={{ fontSize: 13, color: '#94A3B8', marginTop: 4, fontWeight: 500 }}>Historical payroll trends for {selectedYear}</div>
-                </div>
-                <div style={{ display: 'flex', gap: 16 }}>
-                  {[{ l: 'Gross', c: '#7C3AED' }, { l: 'Net', c: '#10B981' }, { l: 'Deductions', c: '#F43F5E' }].map(x => (
-                    <span key={x.l} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 800, color: x.c, textTransform: 'uppercase' }}>
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: x.c }} />{x.l}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <ResponsiveContainer width="100%" height={250}>
-                <AreaChart data={monthlyChartData}>
-                  <defs>
-                    <linearGradient id="grossGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#7C3AED" stopOpacity={0.2} /><stop offset="100%" stopColor="#7C3AED" stopOpacity={0} /></linearGradient>
-                    <linearGradient id="netGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#10B981" stopOpacity={0.15} /><stop offset="100%" stopColor="#10B981" stopOpacity={0} /></linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="6 6" stroke="#F1F5F9" vertical={false} />
-                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700, fill: '#94A3B8' }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700, fill: '#94A3B8' }} tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`} />
-                  <Tooltip cursor={{ stroke: '#EBEBF5', strokeWidth: 2 }} contentStyle={{ borderRadius: 16, border: 'none', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', fontSize: 12, fontWeight: 800 }} />
-                  <Area type="monotone" dataKey="gross" stroke="#7C3AED" strokeWidth={3} fill="url(#grossGrad)" name="Gross" />
-                  <Area type="monotone" dataKey="net" stroke="#10B981" strokeWidth={2} fill="url(#netGrad)" name="Net Pay" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </motion.div>
-
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-              style={cardStyle}>
-              <div style={{ fontSize: 19, fontWeight: 900, color: '#0F172A', letterSpacing: '-0.5px', marginBottom: 4 }}>Talent Mix</div>
-              <div style={{ fontSize: 13, color: '#94A3B8', marginBottom: 20, fontWeight: 500 }}>Dept-wise headcount distribution</div>
-              <div style={{ position: 'relative', height: 180 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={58} outerRadius={85} dataKey="value" stroke="none">
-                      {pieData.map((d, i) => <Cell key={i} fill={d.color} />)}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', textAlign: 'center' }}>
-                  <div style={{ fontSize: 28, fontWeight: 900, color: '#0F172A' }}>{employees.length}</div>
-                  <div style={{ fontSize: 10, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase' }}>Experts</div>
-                </div>
-              </div>
-              <div style={{ marginTop: 20, display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                {pieData.map((d, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: '#F8FAFC', borderRadius: 10, border: '1px solid #F1F5F9' }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: d.color }} />
-                    <span style={{ fontSize: 12, fontWeight: 800, color: '#1E293B' }}>{d.name}</span>
+        
+        <main style={{ padding: '80px 40px 40px' }}>
+          <div style={{ maxWidth: 1400, margin: '0 auto' }}>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 40, gap: 24, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 16, alignItems: 'flex-end', flex: 1, flexWrap: 'wrap' }}>
+                <FilterSelect label="Cycle Year" value={selectedYear} options={[2023, 2024, 2025, 2026]} onChange={v => setSelectedYear(parseInt(v))} />
+                <FilterSelect label="Payroll Month" value={selectedMonth} options={[1,2,3,4,5,6,7,8,9,10,11,12].map(m => ({v:m, l: new Date(2000, m-1).toLocaleString('default',{month:'long'})}))} onChange={v => setSelectedMonth(parseInt(v))} />
+                
+                {isAdminOrPayroll && (
+                  <div style={{ flex: 1, minWidth: 240 }}>
+                    <label style={{ display: 'block', fontSize: 10, fontWeight: 800, color: '#94A3B8', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Target Employee</label>
+                    <select value={selectedEmployee?.id || ''}
+                      onChange={e => setSelectedEmployee(employees.find(emp => emp.id === parseInt(e.target.value)) || null)}
+                      style={{ width: '100%', padding: '12px 16px', borderRadius: 14, border: '1.5px solid #E2E8F0', background: '#fff', fontSize: 14, fontWeight: 700, color: '#1E293B', outline: 'none', appearance: 'none', backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%237C3AED%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '16px' }}>
+                      <option value="">Select an employee...</option>
+                      {employees.map(emp => (
+                        <option key={emp.id} value={emp.id}>{emp.firstName || emp.first_name} {emp.lastName || emp.last_name}</option>
+                      ))}
+                    </select>
                   </div>
-                ))}
+                )}
+                
+                {canGeneratePayroll && (
+                  <button onClick={handleGeneratePayroll} disabled={generating} style={{ ...btnPrimary, height: 46 }}>
+                    {generating ? <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/20 border-t-white" /> : <Plus size={18} />}
+                    {generating ? 'Processing...' : 'Generate Payroll'}
+                  </button>
+                )}
               </div>
-            </motion.div>
-          </div>
 
-          <div style={{ ...cardStyle, marginBottom: 24, padding: '20px' }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-end' }}>
-              <FilterSelect label="Cycle Year" value={selectedYear} options={[2024, 2025, 2026]} onChange={v => setSelectedYear(parseInt(v))} />
-              <FilterSelect label="Payroll Month" value={selectedMonth} options={Array.from({ length: 12 }, (_, i) => ({ v: i + 1, l: new Date(2024, i).toLocaleString('default', { month: 'long' }) }))} onChange={v => setSelectedMonth(parseInt(v))} />
-              {isAdminOrPayroll && (
-                <div style={{ flex: 1, minWidth: 240 }}>
-                  <label style={{ display: 'block', fontSize: 10, fontWeight: 800, color: '#94A3B8', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Target Employee</label>
-                  <select value={selectedEmployee?.id || ''}
-                    onChange={e => setSelectedEmployee(employees.find(emp => emp.id === parseInt(e.target.value)) || null)}
-                    style={{ width: '100%', padding: '12px 16px', borderRadius: 14, border: '1.5px solid #E2E8F0', background: '#fff', fontSize: 14, fontWeight: 700, color: '#1E293B', outline: 'none', appearance: 'none', backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%237C3AED%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '16px' }}>
-                    <option value="">Select an employee...</option>
-                    {employees.map(emp => (
-                      <option key={emp.id} value={emp.id}>{emp.firstName || emp.first_name} {emp.lastName || emp.last_name}</option>
-                    ))}
-                  </select>
+              <div style={{ ...cardStyle, padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 24, minWidth: 400 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', marginBottom: 4 }}>Monthly Budget</div>
+                  {isEditingBudget ? (
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input 
+                        type="number" 
+                        value={monthlyBudget} 
+                        onChange={e => setMonthlyBudget(e.target.value)}
+                        style={{ width: 120, padding: '4px 8px', borderRadius: 8, border: '1px solid #7C3AED', outline: 'none' }} 
+                      />
+                      <button onClick={updateBudget} style={{ fontSize: 11, fontWeight: 900, color: '#7C3AED', background: 'none', border: 'none', cursor: 'pointer' }}>Save</button>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 24, fontWeight: 900, color: '#1E293B', display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                      ₹{fmt(monthlyBudget)}
+                      <button onClick={() => setIsEditingBudget(true)} style={{ fontSize: 10, fontWeight: 800, color: '#7C3AED', background: 'none', border: 'none', cursor: 'pointer' }}>Edit</button>
+                    </div>
+                  )}
+                </div>
+                <div style={{ width: 1, height: 40, background: '#EBEBF5' }} />
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: budgetUtilization > 90 ? '#F43F5E' : '#64748B', textTransform: 'uppercase', marginBottom: 4 }}>Utilization</div>
+                  <div style={{ fontSize: 24, fontWeight: 900, color: budgetUtilization > 90 ? '#F43F5E' : '#10B981' }}>{fmt(budgetUtilization)}%</div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 24, marginBottom: 32 }}>
+              <StatCard title="Total Payout" value={`₹${fmt(totalPayrollCost)}`} icon="💰" badge={selectedYear.toString()} badgeColor="#7C3AED" />
+              <StatCard title="Team Count" value={filteredPayrolls.length.toString()} icon="👥" badge="Active" badgeColor="#10B981" />
+              <StatCard title="Average Salary" value={`₹${fmt(totalPayrollCost / (filteredPayrolls.length || 1))}`} icon="📈" badge="Per Head" badgeColor="#3B82F6" />
+            </div>
+
+            <div style={cardStyle}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
+                <h3 style={{ fontSize: 20, fontWeight: 900, color: '#0F172A', margin: 0 }}>Payroll Vault</h3>
+                <div style={{ position: 'relative', width: 400 }}>
+                  <Search style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} size={18} />
+                  <input type="text" placeholder="Search by name, code or period..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+                    style={{ width: '100%', padding: '12px 16px 12px 48px', borderRadius: 16, border: '1.5px solid #F1F5F9', background: '#F8FAFC', outline: 'none', fontSize: 14, fontWeight: 600 }} />
+                </div>
+              </div>
+
+              {loading ? (
+                <div style={{ padding: 100, textAlign: 'center', color: '#94A3B8' }}>Loading payroll records...</div>
+              ) : filteredPayrolls.length === 0 ? (
+                <div style={{ padding: 100, textAlign: 'center' }}>
+                  <AlertCircle size={48} color="#E2E8F0" style={{ marginBottom: 16 }} />
+                  <div style={{ fontSize: 18, fontWeight: 800, color: '#1E293B' }}>No Payroll Records</div>
+                  <p style={{ color: '#64748B', fontSize: 14 }}>Ready to start the cycle? Select an employee above.</p>
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '2px solid #F8FAFC' }}>
+                        <th style={{ textAlign: 'left', padding: '16px 20px', fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase' }}>Employee</th>
+                        <th style={{ textAlign: 'left', padding: '16px 20px', fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase' }}>Period</th>
+                        <th style={{ textAlign: 'right', padding: '16px 20px', fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase' }}>Gross Wage</th>
+                        <th style={{ textAlign: 'right', padding: '16px 20px', fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase' }}>Deductions</th>
+                        <th style={{ textAlign: 'right', padding: '16px 20px', fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase' }}>Net Pay</th>
+                        <th style={{ textAlign: 'center', padding: '16px 20px', fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase' }}>Status</th>
+                        <th style={{ textAlign: 'right', padding: '16px 20px', fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredPayrolls.map((p, idx) => {
+                        const sColor = statusColors[p.status] || '#9CA3AF'
+                        return (
+                          <motion.tr key={p.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
+                            style={{ borderBottom: '1px solid #F8FAFC', cursor: 'pointer' }}
+                            whileHover={{ background: '#F8FAFC' }}
+                            onClick={() => { setSelectedPayroll(p); setShowPayslip(true); }}>
+                            <td style={{ padding: '20px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg,#7C3AED10,#7C3AED20)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 900, color: '#7C3AED' }}>{p.employee_name?.charAt(0)}</div>
+                                <div>
+                                  <div style={{ fontSize: 14, fontWeight: 800, color: '#1E293B' }}>{p.employee_name}</div>
+                                  <div style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8' }}>{p.employee_code}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td style={{ padding: '20px', fontSize: 14, fontWeight: 600, color: '#475569' }}>{p.period}</td>
+                            <td style={{ padding: '20px', textAlign: 'right', fontSize: 14, fontWeight: 800, color: '#1E293B' }}>₹{fmt(p.gross_wage)}</td>
+                            <td style={{ padding: '20px', textAlign: 'right', fontSize: 14, fontWeight: 800, color: '#F43F5E' }}>₹{fmt(p.total_deductions)}</td>
+                            <td style={{ padding: '20px', textAlign: 'right', fontSize: 15, fontWeight: 900, color: '#10B981' }}>₹{fmt(p.net_pay)}</td>
+                            <td style={{ padding: '20px', textAlign: 'center' }}>
+                              <span style={{ padding: '6px 12px', borderRadius: 20, background: sColor + '15', color: sColor, fontSize: 11, fontWeight: 800, textTransform: 'uppercase' }}>{p.status}</span>
+                            </td>
+                            <td style={{ padding: '20px' }} onClick={e => e.stopPropagation()}>
+                              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                                <ActionBtn onClick={() => handlePrintPayslip(p)} icon={<Printer size={16} />} color="#64748B" bg="#F8FAFC" />
+                                {isAdminOrPayroll && p.status !== 'paid' && (
+                                  <>
+                                    <ActionBtn 
+                                      onClick={() => { setAdjustmentData({...p}); setShowAdjustmentModal(true); }} 
+                                      icon={<FileText size={16} />} 
+                                      color="#7C3AED" bg="#F5F3FF" 
+                                      title="Manual Adjustment"
+                                    />
+                                    <ActionBtn
+                                      onClick={() => handleStatusCycle(p)}
+                                      icon={<span style={{fontSize:10,fontWeight:900}}>{p.status==='draft'?'▶':'✓'}</span>}
+                                      color="#10B981" bg="#F0FDF4"
+                                      title={p.status==='draft'?'Mark Approved':'Mark Paid'}
+                                    />
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </motion.tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
-              <div style={{ flex: 1.5, minWidth: 260 }}>
-                <label style={{ display: 'block', fontSize: 10, fontWeight: 800, color: '#94A3B8', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Filter Records</label>
-                <div style={{ position: 'relative' }}>
-                  <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#7C3AED' }} />
-                  <input type="text" placeholder="Search by name, code or period..."
-                    value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-                    style={{ width: '100%', padding: '12px 16px 12px 42px', borderRadius: 14, border: '1.5px solid #E2E8F0', background: '#fff', fontSize: 14, fontWeight: 600, color: '#1E293B', outline: 'none' }} />
-                </div>
-              </div>
             </div>
-          </div>
-
-          <div style={{ ...cardStyle, padding: '0', overflow: 'hidden' }}>
-            <div style={{ padding: '24px 28px', borderBottom: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontSize: 19, fontWeight: 900, color: '#0F172A', letterSpacing: '-0.3px' }}>Payroll Vault</div>
-              <span style={{ fontSize: 12, fontWeight: 800, color: '#7C3AED', background: '#F5F3FF', padding: '6px 14px', borderRadius: 12 }}>{filteredPayrolls.length} Active Records</span>
-            </div>
-            {loading ? (
-              <div style={{ padding: 64, textAlign: 'center', color: '#94A3B8', fontSize: 14, fontWeight: 700 }}>Synchronizing data...</div>
-            ) : filteredPayrolls.length === 0 ? (
-              <div style={{ padding: 80, textAlign: 'center' }}>
-                <div style={{ width: 80, height: 80, borderRadius: 24, background: '#F8FAFC', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-                  <FileText size={40} style={{ color: '#D1D5DB' }} />
-                </div>
-                <div style={{ fontSize: 18, fontWeight: 900, color: '#64748B' }}>No Payroll Records</div>
-                <p style={{ fontSize: 14, color: '#94A3B8', marginTop: 8 }}>Ready to start the cycle? Select an employee above.</p>
-              </div>
-            ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead style={{ background: '#F8FAFC' }}>
-                    <tr>
-                      {['Team Member', 'Period', 'Basic', 'Gross', 'Deductions', 'Net Pay', 'Status', 'Actions'].map((h, i) => (
-                        <th key={h} style={{ textAlign: i === 0 || i === 1 ? 'left' : i >= 6 ? 'center' : 'right', fontSize: 10, fontWeight: 800, color: '#94A3B8', letterSpacing: '0.12em', textTransform: 'uppercase', padding: '16px 28px' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredPayrolls.map((p, i) => {
-                      const sc = statusColors[p.status] || statusColors.draft
-                      return (
-                        <motion.tr initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.05 }}
-                          key={p.id} style={{ borderBottom: '1px solid #F1F5F9', transition: 'background 0.2s' }}>
-                          <td style={{ padding: '16px 28px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                              <div style={{ width: 40, height: 40, borderRadius: 14, background: 'linear-gradient(135deg,#7C3AED,#A78BFA)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, color: '#fff' }}>
-                                {(p.employee_name || '?')[0].toUpperCase()}
-                              </div>
-                              <div>
-                                <div style={{ fontSize: 15, fontWeight: 900, color: '#0F172A' }}>{p.employee_name}</div>
-                                <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', marginTop: 2 }}>{p.employee_code}</div>
-                              </div>
-                            </div>
-                          </td>
-                          <td style={{ padding: '16px 28px', fontSize: 14, fontWeight: 700, color: '#1E293B' }}>{p.period}</td>
-                          <td style={{ padding: '16px 28px', fontSize: 14, fontWeight: 800, color: '#475569', textAlign: 'right' }}>₹{fmtInt(p.basic_salary)}</td>
-                          <td style={{ padding: '16px 28px', fontSize: 14, fontWeight: 900, color: '#10B981', textAlign: 'right' }}>₹{fmtInt(p.gross_wage)}</td>
-                          <td style={{ padding: '16px 28px', fontSize: 14, fontWeight: 800, color: '#F43F5E', textAlign: 'right' }}>₹{fmtInt(p.total_deductions)}</td>
-                          <td style={{ padding: '16px 28px', fontSize: 16, fontWeight: 900, color: '#7C3AED', textAlign: 'right' }}>₹{fmtInt(p.net_pay)}</td>
-                          <td style={{ padding: '16px 28px', textAlign: 'center' }}>
-                            <span style={{ fontSize: 10, fontWeight: 900, color: sc, background: sc + '12', padding: '5px 12px', borderRadius: 20, textTransform: 'uppercase', border: `1px solid ${sc}25` }}>
-                              {p.status || 'Draft'}
-                            </span>
-                          </td>
-                          <td style={{ padding: '16px 28px', textAlign: 'center' }}>
-                            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-                              <ActionBtn onClick={() => { setSelectedPayroll(p); setShowPayslip(true) }} icon={<Eye size={16} />} color="#7C3AED" bg="#F5F3FF" />
-                              <ActionBtn onClick={() => handlePrintPayslip(p)} icon={<Printer size={16} />} color="#64748B" bg="#F8FAFC" />
-                              {canGeneratePayroll && p.status !== 'paid' && (
-                                <ActionBtn
-                                  onClick={() => handleStatusCycle(p)}
-                                  icon={<span style={{fontSize:10,fontWeight:900}}>{p.status==='draft'?'▶':'✓'}</span>}
-                                  color="#10B981" bg="#F0FDF4"
-                                  title={p.status==='draft'?'Mark Approved':'Mark Paid'}
-                                />
-                              )}
-                            </div>
-                          </td>
-                        </motion.tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
           </div>
         </main>
       </div>
+
+      <AnimatePresence>
+        {showAdjustmentModal && adjustmentData && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: 24 }}>
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              style={{ background: '#fff', borderRadius: 24, width: '100%', maxWidth: 500, padding: 32, boxShadow: '0 40px 100px rgba(0,0,0,0.1)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                <h3 style={{ fontSize: 18, fontWeight: 900, color: '#0F172A', margin: 0 }}>Manual Adjustments</h3>
+                <button onClick={() => setShowAdjustmentModal(false)} style={{ border: 'none', background: 'none', cursor: 'pointer' }}><X size={20} /></button>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                {[
+                  { label: 'Basic Salary', key: 'basic_salary' },
+                  { label: 'Performance Bonus', key: 'bonus' },
+                  { label: 'HRA', key: 'hra' },
+                  { label: 'Travel Allowance', key: 'travel_allowance' },
+                  { label: 'Other Allowance', key: 'other_allowance' },
+                  { label: 'PF Contribution', key: 'pf' },
+                  { label: 'Professional Tax', key: 'prof_tax' },
+                  { label: 'Income Tax (TDS)', key: 'tds' },
+                ].map(field => (
+                  <div key={field.key}>
+                    <label style={{ display: 'block', fontSize: 10, fontWeight: 800, color: '#64748B', marginBottom: 4, textTransform: 'uppercase' }}>{field.label}</label>
+                    <input 
+                      type="number" 
+                      value={adjustmentData[field.key] || 0} 
+                      onChange={e => setAdjustmentData({ ...adjustmentData, [field.key]: Number(e.target.value) })}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1.5px solid #F1F5F9', background: '#F8FAFC', outline: 'none', fontSize: 13, fontWeight: 700 }}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div style={{ marginTop: 24, padding: 16, background: '#F5F3FF', borderRadius: 16, textAlign: 'right' }}>
+                <div style={{ fontSize: 10, fontWeight: 900, color: '#7C3AED', textTransform: 'uppercase' }}>Estimated Net Pay</div>
+                <div style={{ fontSize: 24, fontWeight: 900, color: '#1E293B' }}>₹{fmt(adjustmentData.basic_salary + adjustmentData.bonus + adjustmentData.hra + adjustmentData.travel_allowance + adjustmentData.other_allowance - (adjustmentData.pf + adjustmentData.prof_tax + adjustmentData.tds))}</div>
+              </div>
+              <button onClick={handleSaveAdjustment} style={{ ...btnPrimary, width: '100%', justifyContent: 'center', height: 50, marginTop: 24 }}>Save Changes</button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showPayslip && selectedPayroll && (
@@ -500,8 +484,8 @@ const FilterSelect = ({ label, value, options, onChange }) => (
   </div>
 )
 
-const ActionBtn = ({ onClick, icon, color, bg }) => (
-  <button onClick={onClick} style={{ width: 38, height: 38, borderRadius: 12, border: 'none', background: bg, color: color, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
+const ActionBtn = ({ onClick, icon, color, bg, title }) => (
+  <button onClick={onClick} title={title} style={{ width: 38, height: 38, borderRadius: 12, border: 'none', background: bg, color: color, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
     {icon}
   </button>
 )

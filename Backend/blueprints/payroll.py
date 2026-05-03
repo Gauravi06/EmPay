@@ -44,19 +44,22 @@ def _normalize(record):
 
     earned = r.get('basic_salary') or 0
     bonus  = r.get('bonus') or 0
-    r['gross_wage']       = round(earned + bonus, 2)
+    
+    r['gross_wage']       = round(earned + bonus + r.get('hra', 0) + r.get('travel_allowance', 0) + r.get('other_allowance', 0), 2)
     r['total_deductions'] = r.get('deductions', 0)
     r['net_pay']          = r.get('net_salary', 0)
 
     r['days_present']          = r.get('days_present') or 0
     r['working_days']          = r.get('working_days') or 0
-    r['pf_employee']           = round(earned * 0.12, 2)
-    r['professional_tax']      = 200 if earned > 0 else 0
-    r['tds']                   = 0
+    
+    # Map database columns to the names expected by frontend
+    r['pf_employee']           = r.get('pf', 0)
+    r['professional_tax']      = r.get('prof_tax', 0)
+    r['tds']                   = r.get('tds', 0)
     r['performance_bonus']     = bonus
-    r['house_rent_allowance']  = 0
-    r['standard_allowance']    = 0
-    r['leave_travel_allowance']= 0
+    r['house_rent_allowance']  = r.get('hra', 0)
+    r['standard_allowance']    = r.get('travel_allowance', 0)
+    r['leave_travel_allowance']= r.get('other_allowance', 0)
 
     return r
 
@@ -155,27 +158,24 @@ def generate_payroll(current_user):
     earned_salary = round(full_salary * (present_days / working_days), 2) if working_days > 0 else full_salary
 
     bonus            = data.get('bonus', 0)
+    hra              = round(earned_salary * 0.4, 2) # 40% HRA
+    travel           = 2000 if earned_salary > 0 else 0
+    other            = 0
+    
     pf               = round(earned_salary * 0.12, 2)
-    professional_tax = 200 if earned_salary > 0 else 0
-    deductions       = round(pf + professional_tax, 2)
-    net_salary       = round(earned_salary + bonus - deductions, 2)
-
-    try:
-        conn.execute("ALTER TABLE payroll ADD COLUMN days_present INTEGER DEFAULT 0")
-    except Exception:
-        pass
-    try:
-        conn.execute("ALTER TABLE payroll ADD COLUMN working_days INTEGER DEFAULT 0")
-    except Exception:
-        pass
+    prof_tax         = 200 if earned_salary > 0 else 0
+    tds              = 0
+    
+    deductions       = round(pf + prof_tax + tds, 2)
+    net_salary       = round(earned_salary + bonus + hra + travel + other - deductions, 2)
 
     cursor = conn.execute('''
         INSERT INTO payroll
-            (user_id, month, year, basic_salary, bonus, deductions, net_salary,
-             days_present, working_days, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
-    ''', (employee_id, month, year, earned_salary, bonus, deductions, net_salary,
-          present_days, working_days))
+            (user_id, month, year, basic_salary, bonus, hra, travel_allowance, other_allowance,
+             pf, prof_tax, tds, deductions, net_salary, days_present, working_days, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+    ''', (employee_id, month, year, earned_salary, bonus, hra, travel, other,
+          pf, prof_tax, tds, deductions, net_salary, present_days, working_days))
     conn.commit()
 
     record = conn.execute('''
@@ -216,16 +216,25 @@ def update_payroll(current_user, payroll_id):
     if not record:
         return jsonify({'error': 'Payroll record not found'}), 404
 
-    basic_salary = data.get('basicSalary', record['basic_salary'])
-    bonus        = data.get('bonus',        record['bonus'])
-    deductions   = data.get('deductions',   record['deductions'])
-    net_salary   = round(basic_salary + bonus - deductions, 2)
-    status       = data.get('status',       record['status'])
+    basic_salary = data.get('basic_salary', data.get('basicSalary', record['basic_salary']))
+    bonus        = data.get('bonus', record['bonus'])
+    hra          = data.get('hra', record['hra'])
+    travel       = data.get('travel_allowance', record['travel_allowance'])
+    other        = data.get('other_allowance', record['other_allowance'])
+    pf           = data.get('pf', record['pf'])
+    prof_tax     = data.get('prof_tax', record['prof_tax'])
+    tds          = data.get('tds', record['tds'])
+    
+    deductions   = round(pf + prof_tax + tds, 2)
+    net_salary   = round(basic_salary + bonus + hra + travel + other - deductions, 2)
+    status       = data.get('status', record['status'])
 
     conn.execute('''
-        UPDATE payroll SET basic_salary = ?, bonus = ?, deductions = ?, net_salary = ?, status = ?
+        UPDATE payroll 
+        SET basic_salary = ?, bonus = ?, hra = ?, travel_allowance = ?, other_allowance = ?,
+            pf = ?, prof_tax = ?, tds = ?, deductions = ?, net_salary = ?, status = ?
         WHERE id = ?
-    ''', (basic_salary, bonus, deductions, net_salary, status, payroll_id))
+    ''', (basic_salary, bonus, hra, travel, other, pf, prof_tax, tds, deductions, net_salary, status, payroll_id))
     conn.commit()
 
     updated = conn.execute('''
@@ -307,13 +316,13 @@ def get_payslip(current_user, payroll_id):
         'basic_salary':         earned,
         'bonus':                bonus,
         'performance_bonus':    bonus,
-        'gross_wage':           round(earned + bonus, 2),
-        'pf_employee':          round(earned * 0.12, 2),
-        'professional_tax':     200 if earned > 0 else 0,
-        'tds':                  0,
-        'house_rent_allowance': 0,
-        'standard_allowance':   0,
-        'leave_travel_allowance': 0,
+        'gross_wage':           round(earned + bonus + record.get('hra', 0) + record.get('travel_allowance', 0) + record.get('other_allowance', 0), 2),
+        'pf_employee':          record.get('pf', 0),
+        'professional_tax':     record.get('prof_tax', 0),
+        'tds':                  record.get('tds', 0),
+        'house_rent_allowance': record.get('hra', 0),
+        'standard_allowance':   record.get('travel_allowance', 0),
+        'leave_travel_allowance': record.get('other_allowance', 0),
         'total_deductions':     record['deductions'],
         'net_pay':              record['net_salary'],
         'status':               record['status'],
@@ -322,3 +331,37 @@ def get_payslip(current_user, payroll_id):
         'working_days':         working_days,
     }
     return jsonify({'payslip': payslip})
+
+# ── Budget Settings ───────────────────────────────────────────────────────────
+
+@payroll_bp.route('/budget', methods=['GET'])
+@token_required
+def get_budget(current_user):
+    year  = request.args.get('year', datetime.datetime.now().year)
+    month = request.args.get('month', datetime.datetime.now().month)
+    conn  = get_db()
+    row   = conn.execute(
+        'SELECT budget FROM payroll_settings WHERE year = ? AND month = ?',
+        (year, month)
+    ).fetchone()
+    return jsonify({'budget': row['budget'] if row else 0})
+
+@payroll_bp.route('/budget', methods=['POST'])
+@token_required
+def set_budget(current_user):
+    if current_user['role'] != 'admin':
+        return jsonify({'error': 'Admin only'}), 403
+    data   = request.json
+    year   = data.get('year')
+    month  = data.get('month')
+    budget = data.get('budget', 0)
+    if not year or not month:
+        return jsonify({'error': 'Year and month required'}), 400
+    conn = get_db()
+    conn.execute('''
+        INSERT INTO payroll_settings (year, month, budget)
+        VALUES (?, ?, ?)
+        ON CONFLICT(year, month) DO UPDATE SET budget = excluded.budget
+    ''', (year, month, budget))
+    conn.commit()
+    return jsonify({'success': True, 'message': 'Budget updated'})

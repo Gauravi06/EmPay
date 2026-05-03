@@ -86,9 +86,34 @@ def init_db(app):
                 net_salary REAL,
                 status TEXT DEFAULT 'pending',
                 payment_date TEXT,
+                hra REAL DEFAULT 0,
+                travel_allowance REAL DEFAULT 0,
+                other_allowance REAL DEFAULT 0,
+                pf REAL DEFAULT 0,
+                prof_tax REAL DEFAULT 0,
+                tds REAL DEFAULT 0,
                 FOREIGN KEY (user_id) REFERENCES users (id)
             );
         ''')
+
+        # Payroll Settings Table (for Budget)
+        db.execute('''
+            CREATE TABLE IF NOT EXISTS payroll_settings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                year INTEGER NOT NULL,
+                month INTEGER NOT NULL,
+                budget REAL DEFAULT 0,
+                UNIQUE(year, month)
+            );
+        ''')
+
+        # Add missing columns if they don't exist (for existing DBs)
+        for col in ['hra', 'travel_allowance', 'other_allowance', 'pf', 'prof_tax', 'tds']:
+            try:
+                db.execute(f'ALTER TABLE payroll ADD COLUMN {col} REAL DEFAULT 0')
+                db.commit()
+            except Exception:
+                pass
 
         # Time Off Table
         db.execute('''
