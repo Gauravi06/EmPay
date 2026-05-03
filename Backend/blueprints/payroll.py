@@ -207,6 +207,36 @@ def generate_payroll(current_user):
         }
     }), 201
 
+@payroll_bp.route('/preview', methods=['GET'])
+@token_required
+def preview_payroll(current_user):
+    if not _role_ok(current_user['role']):
+        return jsonify({'error': 'Access denied'}), 403
+    
+    employee_id = request.args.get('employee_id')
+    month       = request.args.get('month')
+    year        = request.args.get('year')
+    
+    if not all([employee_id, month, year]):
+        return jsonify({'error': 'Missing parameters'}), 400
+        
+    conn = get_db()
+    user = conn.execute('SELECT salary FROM users WHERE id = ?', (employee_id,)).fetchone()
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+        
+    full_salary  = user['salary'] or 50000
+    working_days = _get_working_days(int(year), int(month))
+    present_days = _get_present_days(conn, employee_id, int(year), int(month))
+    earned_salary = round(full_salary * (present_days / working_days), 2) if working_days > 0 else full_salary
+    
+    return jsonify({
+        'fullSalary': full_salary,
+        'earnedSalary': earned_salary,
+        'presentDays': present_days,
+        'workingDays': working_days
+    })
+
 
 @payroll_bp.route('/<int:payroll_id>', methods=['PUT'])
 @token_required

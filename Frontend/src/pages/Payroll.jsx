@@ -51,6 +51,8 @@ const Payroll = () => {
   const [searchTerm, setSearchTerm] = useState('')
   
   const [genOverrides, setGenOverrides] = useState({ manual_basic: '', bonus: '' })
+  const [showGenConfirm, setShowGenConfirm] = useState(false)
+  const [previewData, setPreviewData] = useState(null)
   
   const [monthlyBudget, setMonthlyBudget] = useState(0)
   const [isEditingBudget, setIsEditingBudget] = useState(false)
@@ -136,12 +138,31 @@ const Payroll = () => {
 
     setGenerating(true)
     try {
-      await generatePayroll(targetEmployee.id, selectedYear, selectedMonth, {
+      // Step 1: Preview
+      const res = await fetch(`http://localhost:5000/api/payroll/preview?employee_id=${targetEmployee.id}&month=${selectedMonth}&year=${selectedYear}`, {
+        headers: { Authorization: `Bearer ${useAuthStore.getState().token}` }
+      })
+      const data = await res.json()
+      setPreviewData(data)
+      setGenOverrides({ manual_basic: data.earnedSalary, bonus: '' })
+      setShowGenConfirm(true)
+    } catch (e) {
+      toast.error('Failed to preview payroll')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  const confirmAndGenerate = async () => {
+    setGenerating(true)
+    try {
+      await generatePayroll(selectedEmployee.id, selectedYear, selectedMonth, {
         bonus: Number(genOverrides.bonus || 0),
         manual_basic: genOverrides.manual_basic ? Number(genOverrides.manual_basic) : undefined
       })
-      toast.success(`Payroll generated for ${targetEmployee.firstName || targetEmployee.first_name}`)
+      toast.success(`Payroll generated for ${selectedEmployee.firstName || selectedEmployee.first_name}`)
       loadData()
+      setShowGenConfirm(false)
       setGenOverrides({ manual_basic: '', bonus: '' })
     } catch (e) {
       toast.error(e.message || 'Failed to generate payroll')
@@ -221,18 +242,10 @@ const Payroll = () => {
                 )}
                 
                 {canGeneratePayroll && (
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-                    <div style={{ minWidth: 100 }}>
-                      <label style={{ display: 'block', fontSize: 10, fontWeight: 800, color: '#94A3B8', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Manual Base</label>
-                      <input type="number" placeholder="Auto" value={genOverrides.manual_basic}
-                        onChange={e => setGenOverrides({ ...genOverrides, manual_basic: e.target.value })}
-                        style={{ width: '100%', padding: '12px 16px', borderRadius: 14, border: '1.5px solid #E2E8F0', background: '#fff', fontSize: 13, fontWeight: 700, outline: 'none' }} />
-                    </div>
-                    <button onClick={handleGeneratePayroll} disabled={generating} style={{ ...btnPrimary, height: 46 }}>
-                      {generating ? <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/20 border-t-white" /> : <Plus size={18} />}
-                      {generating ? 'Processing...' : 'Generate'}
-                    </button>
-                  </div>
+                  <button onClick={handleGeneratePayroll} disabled={generating} style={{ ...btnPrimary, height: 46 }}>
+                    {generating ? <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/20 border-t-white" /> : <Plus size={18} />}
+                    {generating ? 'Processing...' : 'Generate Payroll'}
+                  </button>
                 )}
               </div>
 
@@ -358,6 +371,58 @@ const Payroll = () => {
           </div>
         </main>
       </div>
+
+      {/* Generation Confirmation Modal */}
+      <AnimatePresence>
+        {showGenConfirm && previewData && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400, padding: 24 }}>
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              style={{ background: '#fff', borderRadius: 24, width: '100%', maxWidth: 450, padding: 32, boxShadow: '0 40px 100px rgba(0,0,0,0.1)' }}>
+              
+              <div style={{ textAlign: 'center', marginBottom: 24 }}>
+                <div style={{ width: 64, height: 64, borderRadius: 20, background: '#F5F3FF', color: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                  <TrendingUp size={32} />
+                </div>
+                <h3 style={{ fontSize: 20, fontWeight: 900, color: '#0F172A', margin: 0 }}>Review Salary Basis</h3>
+                <p style={{ color: '#64748B', fontSize: 14, marginTop: 8 }}>Finalize the base salary for {selectedEmployee?.firstName || selectedEmployee?.first_name} for this month.</p>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
+                <div style={{ padding: 16, background: '#F8FAFC', borderRadius: 16, border: '1px solid #E2E8F0' }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', marginBottom: 4 }}>Fixed Salary</div>
+                  <div style={{ fontSize: 18, fontWeight: 900, color: '#1E293B' }}>₹{fmt(previewData.fullSalary)}</div>
+                </div>
+                <div style={{ padding: 16, background: '#F0FDF4', borderRadius: 16, border: '1px solid #BBF7D0' }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: '#166534', textTransform: 'uppercase', marginBottom: 4 }}>Leave Based</div>
+                  <div style={{ fontSize: 18, fontWeight: 900, color: '#15803D' }}>₹{fmt(previewData.earnedSalary)}</div>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: '#0F172A', marginBottom: 8, textTransform: 'uppercase' }}>Confirm Base Salary to pay</label>
+                <div style={{ position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', fontWeight: 900, color: '#7C3AED' }}>₹</span>
+                  <input 
+                    type="number" 
+                    value={genOverrides.manual_basic} 
+                    onChange={e => setGenOverrides({ ...genOverrides, manual_basic: e.target.value })}
+                    style={{ width: '100%', padding: '16px 16px 16px 32px', borderRadius: 16, border: '2.5px solid #7C3AED', background: '#fff', outline: 'none', fontSize: 18, fontWeight: 900, color: '#1E293B' }} 
+                  />
+                </div>
+                <p style={{ fontSize: 11, color: '#94A3B8', marginTop: 8, textAlign: 'center' }}>Leave it as {fmt(previewData.earnedSalary)} to follow attendance rules.</p>
+              </div>
+
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button onClick={() => setShowGenConfirm(false)} style={{ flex: 1, height: 50, borderRadius: 14, border: 'none', background: '#F1F5F9', color: '#64748B', fontWeight: 800, cursor: 'pointer' }}>Cancel</button>
+                <button onClick={confirmAndGenerate} disabled={generating} style={{ ...btnPrimary, flex: 2, height: 50, justifyContent: 'center' }}>
+                  {generating ? 'Processing...' : 'Confirm & Create'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showAdjustmentModal && adjustmentData && (
