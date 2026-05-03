@@ -5,8 +5,6 @@ from functools import wraps
 from flask import request, jsonify, current_app
 
 SECRET_KEY = 'empay-secret-key-123' # Should be in config
-STRIPE_SECRET_KEY = 'sk_test_51P...' 
-STRIPE_PUBLISHABLE_KEY = 'pk_test_51P...'
 
 def _to_camel(snake):
     """Convert snake_case to camelCase."""

@@ -163,7 +163,7 @@ const EmployeeProfile = () => {
     return (
       <div className="min-h-screen bg-[#F8FAFC]">
         <Sidebar /><Header />
-        <main className="pt-16 p-6" style={{ marginLeft: 220 }}>
+        <main style={{ marginLeft: 240, paddingTop: 84, paddingLeft: 24, paddingRight: 24, paddingBottom: 40 }}>
           <div className="max-w-4xl mx-auto space-y-6">
             <div className="h-64 bg-white rounded-3xl animate-pulse" />
             <div className="grid grid-cols-2 gap-6">
@@ -180,7 +180,7 @@ const EmployeeProfile = () => {
     return (
       <div className="min-h-screen bg-[#F8FAFC]">
         <Sidebar /><Header />
-        <main className="pt-16 p-6" style={{ marginLeft: 220 }}>
+        <main style={{ marginLeft: 240, paddingTop: 84, paddingLeft: 24, paddingRight: 24, paddingBottom: 40 }}>
           <div className="text-center py-24">
             <UserCircle className="w-20 h-20 text-slate-200 mx-auto mb-4" />
             <p className="text-slate-500 font-bold mb-6">Employee profile not found</p>
@@ -211,7 +211,7 @@ const EmployeeProfile = () => {
       <Sidebar />
       <Header />
 
-      <main className="pt-16 p-6" style={{ marginLeft: 220 }}>
+      <main style={{ marginLeft: 240, paddingTop: 84, paddingLeft: 24, paddingRight: 24, paddingBottom: 40 }}>
         <div className="max-w-4xl mx-auto">
 
           {/* Navigation & Actions */}

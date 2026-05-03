@@ -196,7 +196,7 @@ const MyProfile = () => {
       <Sidebar />
       <div style={{ flex: 1, marginLeft: 240 }}>
         <Header />
-        <main className="pt-20 p-8">
+        <main style={{ paddingTop: 84, paddingLeft: 32, paddingRight: 32, paddingBottom: 40 }}>
           
           {/* Hero Section — Ultra Premium */}
           <motion.div 

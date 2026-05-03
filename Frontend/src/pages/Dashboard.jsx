@@ -319,7 +319,8 @@ export default function Dashboard() {
   const monthlyPayrollCost = summary.monthlyPayrollCost || summary.totalPayroll || 0
   const occupancyPct      = summary.totalEmployees ? Math.round(((summary.presentToday ?? presentCount) / summary.totalEmployees) * 100) : 0
   const pendingLeavesCount = summary.pendingLeaves ?? leaveRequests.filter(l => l.status === 'pending').length
-  const budgetPct         = monthlyPayrollCost > 0 ? Math.min(Math.round((monthlyPayrollCost / (monthlyPayrollCost * 1.09)) * 100), 100) : 0
+  const monthlyBudget      = summary.monthlyBudget || 0
+  const budgetPct         = monthlyBudget > 0 ? Math.round((monthlyPayrollCost / monthlyBudget) * 100) : 0
   const canApprove        = hasPermission('time_off', 'approve')
   const isPayroll         = summary.monthlyPayroll?.length > 0 && !summary.attendanceTrend?.length
 

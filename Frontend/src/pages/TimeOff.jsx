@@ -156,7 +156,7 @@ const TimeOff = () => {
       <Sidebar />
       <Header />
 
-      <main className="pt-16 p-6" style={{ marginLeft: 220 }}>
+      <main style={{ marginLeft: 240, paddingTop: 84, paddingLeft: 24, paddingRight: 24, paddingBottom: 40 }}>
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="flex justify-between items-center mb-6">

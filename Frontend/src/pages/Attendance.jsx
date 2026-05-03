@@ -788,7 +788,7 @@ const Attendance = () => {
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#F4F6FB', fontFamily: "'DM Sans', sans-serif" }}>
       <Sidebar />
-      <div style={{ flex: 1, marginLeft: 220 }}>
+      <div style={{ flex: 1, marginLeft: 240 }}>
         <Header />
 
         {/* HR Employee History Modal */}

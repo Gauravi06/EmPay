@@ -78,12 +78,22 @@ def get_summary_report(current_user):
     ''').fetchall()
     attendance_trend = [dict(r) for r in att_trend]
 
+    # ── Current Month Budget ──────────────────────────────────────────────────
+    budget_row = conn.execute('''
+        SELECT COALESCE(budget, 0)
+        FROM payroll_settings
+        WHERE year  = CAST(strftime('%Y', 'now') AS INTEGER)
+          AND month = CAST(strftime('%m', 'now') AS INTEGER)
+    ''').fetchone()
+    current_month_budget = budget_row[0] if budget_row else 0
+
     return jsonify({
         'totalEmployees':         total_employees,
         'presentToday':           present_today,
         'pendingLeaves':          pending_leaves,
         'totalPayroll':           total_payroll,
-        'monthlyPayrollCost':     monthly_payroll_cost,   # ✅ new field for Dashboard card
+        'monthlyPayrollCost':     monthly_payroll_cost,
+        'monthlyBudget':          current_month_budget, # ✅ Actual budget from DB
         'monthlyPayroll':         monthly_payroll,
         'departmentDistribution': department_distribution,
         'attendanceTrend':        attendance_trend,

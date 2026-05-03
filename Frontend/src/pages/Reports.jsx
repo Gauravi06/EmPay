@@ -363,10 +363,11 @@ const Reports = () => {
                     const currMonth = new Date().getMonth() + 1, currYear = new Date().getFullYear()
                     const monthlyTotal = payrolls.filter(p => p.year === currYear && p.month === currMonth).reduce((s,p) => s+(p.gross_wage||0), 0)
                     const avgSalary = employees.length > 0 ? Math.round(monthlyTotal / employees.length) : 0
+                    const remaining = (summary.monthlyBudget || 0) - monthlyTotal
                     return (<>
                       <SummaryCard label="Total Force" val={employees.length} icon={<Users/>} color="#7C3AED" />
                       <SummaryCard label="Monthly Payroll" val={`₹${monthlyTotal.toLocaleString('en-IN',{maximumFractionDigits:0})}`} icon={<DollarSign/>} color="#10B981" />
-                      <SummaryCard label="Average Salary" val={avgSalary ? `₹${avgSalary.toLocaleString('en-IN',{maximumFractionDigits:0})}` : '—'} icon={<TrendingUp/>} color="#3B82F6" />
+                      <SummaryCard label="Budget Remaining" val={`₹${Math.max(0, remaining).toLocaleString('en-IN',{maximumFractionDigits:0})}`} icon={<TrendingUp/>} color={remaining < 0 ? "#F43F5E" : "#3B82F6"} />
                     </>)
                   })()}
                 </div>

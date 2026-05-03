@@ -79,7 +79,7 @@ const EmployeeList = () => {
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
       <Sidebar />
       <Header />
-      <main className="pt-16 p-6" style={{ marginLeft: 220 }}>
+      <main style={{ marginLeft: 240, paddingTop: 84, paddingLeft: 24, paddingRight: 24, paddingBottom: 40 }}>
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-800">Employees</h1>

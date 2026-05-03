@@ -5,9 +5,8 @@ import Header from '../components/Header'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   DollarSign, TrendingUp, Calendar, Eye, Printer,
-  AlertCircle, Users, FileText, Plus, X, Search, Sparkles, CreditCard
+  AlertCircle, Users, FileText, Plus, X, Search, Sparkles
 } from 'lucide-react'
-import { loadStripe } from '@stripe/stripe-js'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell
@@ -17,7 +16,11 @@ import toast from 'react-hot-toast'
 const fmt = (n) => Number(n || 0).toFixed(2)
 const fmtInt = (n) => Number(n || 0).toFixed(0)
 
-const stripePromise = loadStripe('pk_test_51P...'); // Placeholder
+const MONTH_NAMES = {
+  1: 'January', 2: 'February', 3: 'March', 4: 'April',
+  5: 'May', 6: 'June', 7: 'July', 8: 'August',
+  9: 'September', 10: 'October', 11: 'November', 12: 'December'
+}
 
 const PIE_COLORS = ['#7C3AED', '#38BDF8', '#FB923C', '#10B981', '#F43F5E', '#F59E0B']
 const cardStyle = { background: '#fff', borderRadius: 24, padding: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', border: '1px solid #EBEBF5' }
@@ -67,7 +70,7 @@ const Payroll = () => {
 
   const fetchBudget = useCallback(async (year, month) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/payroll/budget?year=${year}&month=${month}`, {
+      const res = await fetch(`http://127.0.0.1:5000/api/payroll/budget?year=${year}&month=${month}`, {
         headers: { Authorization: `Bearer ${useAuthStore.getState().token}` }
       })
       const data = await res.json()
@@ -77,7 +80,7 @@ const Payroll = () => {
 
   const updateBudget = async () => {
     try {
-      await fetch(`http://localhost:5000/api/payroll/budget`, {
+      await fetch(`http://127.0.0.1:5000/api/payroll/budget`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -111,18 +114,6 @@ const Payroll = () => {
 
   useEffect(() => { if (user) loadData() }, [loadData, user])
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    if (params.get('success') === 'true' && params.get('payroll_id')) {
-      const pId = params.get('payroll_id')
-      updatePayrollStatus(pId, 'paid').then(() => {
-        toast.success('Salary Paid Successfully via Stripe!')
-        window.history.replaceState({}, document.title, "/payroll")
-        loadData()
-      })
-    }
-  }, [updatePayrollStatus, loadData])
-
   const filteredPayrolls = payrolls.filter(p => {
     if (searchTerm && !p.employee_name?.toLowerCase().includes(searchTerm.toLowerCase())) return false
     if (selectedEmployee && p.user_id !== selectedEmployee.id) return false
@@ -154,7 +145,7 @@ const Payroll = () => {
     setGenerating(true)
     try {
       // Step 1: Preview
-      const res = await fetch(`http://localhost:5000/api/payroll/preview?employee_id=${targetEmployee.id}&month=${selectedMonth}&year=${selectedYear}`, {
+      const res = await fetch(`http://127.0.0.1:5000/api/payroll/preview?employee_id=${targetEmployee.id}&month=${selectedMonth}&year=${selectedYear}`, {
         headers: { Authorization: `Bearer ${useAuthStore.getState().token}` }
       })
       const data = await res.json()
@@ -187,13 +178,9 @@ const Payroll = () => {
   }
 
   const handleStatusCycle = async (p) => {
-    if (p.status === 'approved') {
-      handlePayNow(p)
-      return
-    }
-
     let nextStatus = 'draft'
     if (p.status === 'pending') nextStatus = 'approved'
+    else if (p.status === 'approved') nextStatus = 'paid'
     else if (p.status === 'draft') nextStatus = 'approved'
 
     try {
@@ -205,28 +192,9 @@ const Payroll = () => {
     }
   }
 
-  const handlePayNow = async (p) => {
-    try {
-      toast.loading('Initializing Stripe Secure Payment...')
-      const res = await fetch(`http://localhost:5000/api/payroll/create-checkout-session`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${useAuthStore.getState().token}` 
-        },
-        body: JSON.stringify({ payroll_id: p.id })
-      })
-      const { id } = await res.json()
-      const stripe = await stripePromise
-      await stripe.redirectToCheckout({ sessionId: id })
-    } catch (e) {
-      toast.error('Payment initialization failed')
-    }
-  }
-
   const handleSaveAdjustment = async () => {
     try {
-      const res = await fetch(`http://localhost:5000/api/payroll/${adjustmentData.id}`, {
+      const res = await fetch(`http://127.0.0.1:5000/api/payroll/${adjustmentData.id}`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
@@ -242,379 +210,396 @@ const Payroll = () => {
         toast.error('Failed to save adjustments')
       }
     } catch {
-      toast.error('Network error')
+      toast.error('Error saving adjustments')
     }
   }
 
-  const handlePrintPayslip = (p) => {
-    toast.success('Preparing high-quality PDF statement...')
-    setTimeout(() => window.print(), 1000)
+  if (!hasPermission(MODULES.PAYROLL, PERMISSIONS.VIEW)) {
+    return <div style={{ padding: 40, textAlign: 'center' }}>You do not have permission to view this page.</div>
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F8FAFC] to-[#F1F5F9]">
-      <Sidebar />
-      <div style={{ marginLeft: 220 }}>
-        <Header />
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#F8FAFC' }}>
+      <Sidebar activePage="payroll" />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', maxWidth: '100%', marginLeft: 240 }}>
+        <Header user={user} />
         
-        <main style={{ padding: '80px 40px 40px' }}>
-          <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-            
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 40, gap: 24, flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', gap: 16, alignItems: 'flex-end', flex: 1, flexWrap: 'wrap' }}>
-                <FilterSelect label="Cycle Year" value={selectedYear} options={[2023, 2024, 2025, 2026]} onChange={v => setSelectedYear(parseInt(v))} />
-                <FilterSelect label="Payroll Month" value={selectedMonth} options={[1,2,3,4,5,6,7,8,9,10,11,12].map(m => ({v:m, l: new Date(2000, m-1).toLocaleString('default',{month:'long'})}))} onChange={v => setSelectedMonth(parseInt(v))} />
-                
-                {isAdminOrPayroll && (
-                  <div style={{ flex: 1, minWidth: 240 }}>
-                    <label style={{ display: 'block', fontSize: 10, fontWeight: 800, color: '#94A3B8', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Target Employee</label>
-                    <select value={selectedEmployee?.id || ''}
-                      onChange={e => setSelectedEmployee(employees.find(emp => emp.id === parseInt(e.target.value)) || null)}
-                      style={{ width: '100%', padding: '12px 16px', borderRadius: 14, border: '1.5px solid #E2E8F0', background: '#fff', fontSize: 14, fontWeight: 700, color: '#1E293B', outline: 'none', appearance: 'none', backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%237C3AED%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '16px' }}>
-                      <option value="">Select an employee...</option>
-                      {employees.map(emp => (
-                        <option key={emp.id} value={emp.id}>{emp.firstName || emp.first_name} {emp.lastName || emp.last_name}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-                
-                {canGeneratePayroll && (
-                  <button onClick={handleGeneratePayroll} disabled={generating} style={{ ...btnPrimary, height: 46 }}>
-                    {generating ? <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/20 border-t-white" /> : <Plus size={18} />}
-                    {generating ? 'Processing...' : 'Generate Payroll'}
-                  </button>
-                )}
+        <main style={{ padding: '84px 40px 32px', maxWidth: 1400, margin: '0 auto', width: '100%' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 40 }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                <div style={{ background: '#7C3AED', width: 12, height: 12, borderRadius: 4 }}></div>
+                <h1 style={{ fontSize: 32, fontWeight: 900, color: '#0F172A', letterSpacing: '-1px' }}>Payroll Vault</h1>
               </div>
+              <p style={{ color: '#64748B', fontWeight: 500 }}>Secure management of company-wide salary disbursements</p>
+            </div>
+            
+            <div style={{ display: 'flex', gap: 16 }}>
+              <div style={{ background: '#fff', padding: '8px 16px', borderRadius: 16, border: '1px solid #E2E8F0', display: 'flex', gap: 12 }}>
+                <div style={{ borderRight: '1px solid #E2E8F0', paddingRight: 12 }}>
+                  <label style={{ display: 'block', fontSize: 9, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', marginBottom: 2 }}>Cycle Year</label>
+                  <select value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))}
+                    style={{ border: 'none', fontWeight: 700, outline: 'none', color: '#0F172A', background: 'transparent', cursor: 'pointer' }}>
+                    {[2024, 2025, 2026, 2027, 2028].map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 9, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', marginBottom: 2 }}>Payroll Month</label>
+                  <select value={selectedMonth} onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                    style={{ border: 'none', fontWeight: 700, outline: 'none', color: '#0F172A', background: 'transparent', cursor: 'pointer' }}>
+                    {Object.entries(MONTH_NAMES).map(([val, name]) => <option key={val} value={val}>{name}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
 
-              <div style={{ ...cardStyle, padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 24, minWidth: 400 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 10, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', marginBottom: 4 }}>Monthly Budget</div>
-                  {isEditingBudget ? (
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <input 
-                        type="number" 
-                        value={monthlyBudget} 
-                        onChange={e => setMonthlyBudget(e.target.value)}
-                        style={{ width: 120, padding: '4px 8px', borderRadius: 8, border: '1px solid #7C3AED', outline: 'none' }} 
-                      />
-                      <button onClick={updateBudget} style={{ fontSize: 11, fontWeight: 900, color: '#7C3AED', background: 'none', border: 'none', cursor: 'pointer' }}>Save</button>
+          {/* Stats Bar */}
+          <div style={{ display: 'flex', gap: 24, marginBottom: 40, flexWrap: 'wrap' }}>
+            <StatCard title="Total Payout" value={`₹${fmt(totalPayrollCost)}`} icon="💰" badge={MONTH_NAMES[selectedMonth].slice(0,3) + ' ' + selectedYear} badgeColor="#7C3AED" />
+            <StatCard title="Team Count" value={payrolls.length} icon="👥" badge="Active" badgeColor="#10B981" />
+            <StatCard title="Average Salary" value={`₹${fmt(payrolls.length ? totalPayrollCost / payrolls.length : 0)}`} icon="📈" badge="Per Head" badgeColor="#3B82F6" />
+            
+            {/* Budget Widget */}
+            <motion.div style={{ ...cardStyle, flex: 2, minWidth: 480, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', background: '#fff' }}>
+              <div style={{ position: 'absolute', top: 0, right: 0, padding: '10px 16px', background: '#F8FAFC', borderBottomLeftRadius: 16, fontSize: 10, fontWeight: 800, color: '#64748B', letterSpacing: '0.05em' }}>
+                FISCAL BUDGET
+              </div>
+              
+              <div style={{ padding: '8px 4px' }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#94A3B8', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 12 }}>Allocation for {MONTH_NAMES[selectedMonth]} {selectedYear}</div>
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 24, marginBottom: 20 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+                      <span style={{ fontSize: 36, fontWeight: 900, color: '#0F172A', letterSpacing: '-1.5px' }}>₹{fmt(monthlyBudget)}</span>
+                      {isAdminOrPayroll && (
+                        <button onClick={() => setIsEditingBudget(!isEditingBudget)} style={{ background: '#F5F3FF', border: 'none', color: '#7C3AED', fontSize: 10, fontWeight: 800, padding: '6px 12px', borderRadius: 10, cursor: 'pointer' }}>
+                          {isEditingBudget ? 'CANCEL' : 'EDIT'}
+                        </button>
+                      )}
                     </div>
-                  ) : (
-                    <div style={{ fontSize: 24, fontWeight: 900, color: '#1E293B', display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                      ₹{fmt(monthlyBudget)}
-                      <button onClick={() => setIsEditingBudget(true)} style={{ fontSize: 10, fontWeight: 800, color: '#7C3AED', background: 'none', border: 'none', cursor: 'pointer' }}>Edit</button>
+                    
+                    {isEditingBudget ? (
+                      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                        <input type="number" value={monthlyBudget} onChange={e => setMonthlyBudget(e.target.value)} 
+                          style={{ padding: '8px 14px', borderRadius: 10, border: '2px solid #7C3AED', outline: 'none', width: 140, fontSize: 15, fontWeight: 700 }} />
+                        <button onClick={updateBudget} style={{ ...btnPrimary, padding: '8px 16px', fontSize: 12 }}>Update</button>
+                      </div>
+                    ) : (
+                      <div style={{ marginTop: 8 }}>
+                        <div style={{ width: '100%', height: 10, background: '#F1F5F9', borderRadius: 10, overflow: 'hidden', marginBottom: 8 }}>
+                          <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(budgetUtilization, 100)}%` }}
+                            style={{ height: '100%', background: budgetUtilization > 90 ? '#F43F5E' : '#7C3AED', borderRadius: 10 }} />
+                        </div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B' }}>
+                          {budgetUtilization.toFixed(1)}% of budget utilized
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {!isEditingBudget && (
+                    <div style={{ textAlign: 'right', minWidth: 160 }}>
+                      <div style={{ fontSize: 10, fontWeight: 800, color: '#94A3B8', marginBottom: 4 }}>REMAINING BUDGET</div>
+                      <div style={{ fontSize: 26, fontWeight: 900, color: remainingBudget < 0 ? '#F43F5E' : '#10B981', letterSpacing: '-1px' }}>
+                        ₹{fmt(remainingBudget)}
+                      </div>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: remainingBudget < 0 ? '#F43F5E' : '#10B981', textTransform: 'uppercase', marginTop: 4 }}>
+                         {remainingBudget < 0 ? 'Over Limit' : 'Available'}
+                      </div>
                     </div>
                   )}
                 </div>
-                <div style={{ width: 1, height: 40, background: '#EBEBF5' }} />
-                <div style={{ flex: 1, textAlign: 'right' }}>
-                  <div style={{ fontSize: 10, fontWeight: 800, color: remainingBudget < 0 ? '#F43F5E' : '#64748B', textTransform: 'uppercase', marginBottom: 4 }}>Remaining</div>
-                  <div style={{ fontSize: 24, fontWeight: 900, color: remainingBudget < 0 ? '#F43F5E' : '#10B981' }}>₹{fmt(remainingBudget)}</div>
+              </div>
+            </motion.div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 32 }}>
+            {/* Generator Panel */}
+            {canGeneratePayroll && (
+              <div style={{ width: 340, flexShrink: 0 }}>
+                <div style={{ ...cardStyle, position: 'sticky', top: 32 }}>
+                  <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Sparkles size={18} color="#7C3AED" /> Generate New
+                  </h3>
+                  
+                  <div style={{ marginBottom: 24 }}>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: '#64748B', marginBottom: 10 }}>TARGET EMPLOYEE</label>
+                    <select value={selectedEmployee?.id || ''} 
+                      onChange={(e) => setSelectedEmployee(employees.find(emp => emp.id === Number(e.target.value)))}
+                      style={{ width: '100%', padding: '14px 16px', borderRadius: 14, border: '1px solid #E2E8F0', outline: 'none', fontWeight: 600, color: '#0F172A', fontSize: 14, appearance: 'none', background: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%2364748B\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E") no-repeat right 16px center / 16px', cursor: 'pointer' }}>
+                      <option value="">Select an employee...</option>
+                      {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName}</option>)}
+                    </select>
+                  </div>
+
+                  <button onClick={handleGeneratePayroll} disabled={generating || !selectedEmployee}
+                    style={{ ...btnPrimary, width: '100%', height: 54, justifyContent: 'center', fontSize: 15, opacity: (generating || !selectedEmployee) ? 0.6 : 1 }}>
+                    {generating ? 'Processing...' : <><Plus size={20} /> Generate Payroll</>}
+                  </button>
+                  
+                  <div style={{ marginTop: 24, padding: 16, background: '#F8FAFC', borderRadius: 16, border: '1px dotted #CBD5E1' }}>
+                    <p style={{ fontSize: 12, color: '#64748B', lineHeight: 1.6, margin: 0 }}>
+                      <AlertCircle size={14} style={{ verticalAlign: 'middle', marginRight: 6, color: '#7C3AED' }} />
+                      Payroll will be calculated based on attendance records and base salary for the selected period.
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
-            <div style={{ display: 'flex', gap: 24, marginBottom: 32 }}>
-              <StatCard title="Total Payout" value={`₹${fmt(totalPayrollCost)}`} icon="💰" badge={selectedYear.toString()} badgeColor="#7C3AED" />
-              <StatCard title="Team Count" value={filteredPayrolls.length.toString()} icon="👥" badge="Active" badgeColor="#10B981" />
-              <StatCard title="Average Salary" value={`₹${fmt(totalPayrollCost / (filteredPayrolls.length || 1))}`} icon="📈" badge="Per Head" badgeColor="#3B82F6" />
-            </div>
-
-            <div style={cardStyle}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
-                <h3 style={{ fontSize: 20, fontWeight: 900, color: '#0F172A', margin: 0 }}>Payroll Vault</h3>
-                <div style={{ position: 'relative', width: 400 }}>
-                  <Search style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} size={18} />
-                  <input type="text" placeholder="Search by name, code or period..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-                    style={{ width: '100%', padding: '12px 16px 12px 48px', borderRadius: 16, border: '1.5px solid #F1F5F9', background: '#F8FAFC', outline: 'none', fontSize: 14, fontWeight: 600 }} />
+            {/* List Table */}
+            <div style={{ flex: 1, ...cardStyle, padding: 0, overflow: 'hidden' }}>
+              <div style={{ padding: '24px 32px', borderBottom: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A' }}>Payroll Records</h3>
+                <div style={{ position: 'relative', width: 300 }}>
+                  <Search size={16} color="#94A3B8" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
+                  <input type="text" placeholder="Search by name, code or period..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                    style={{ width: '100%', padding: '10px 16px 10px 42px', borderRadius: 12, border: '1px solid #E2E8F0', outline: 'none', fontSize: 13, fontWeight: 500, color: '#0F172A' }} />
                 </div>
               </div>
 
-              {loading ? (
-                <div style={{ padding: 100, textAlign: 'center', color: '#94A3B8' }}>Loading payroll records...</div>
-              ) : filteredPayrolls.length === 0 ? (
-                <div style={{ padding: 100, textAlign: 'center' }}>
-                  <AlertCircle size={48} color="#E2E8F0" style={{ marginBottom: 16 }} />
-                  <div style={{ fontSize: 18, fontWeight: 800, color: '#1E293B' }}>No Payroll Records</div>
-                  <p style={{ color: '#64748B', fontSize: 14 }}>Ready to start the cycle? Select an employee above.</p>
-                </div>
-              ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '2px solid #F8FAFC' }}>
-                        <th style={{ textAlign: 'left', padding: '16px 20px', fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase' }}>Employee</th>
-                        <th style={{ textAlign: 'left', padding: '16px 20px', fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase' }}>Period</th>
-                        <th style={{ textAlign: 'right', padding: '16px 20px', fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase' }}>Gross Wage</th>
-                        <th style={{ textAlign: 'right', padding: '16px 20px', fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase' }}>Deductions</th>
-                        <th style={{ textAlign: 'right', padding: '16px 20px', fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase' }}>Net Pay</th>
-                        <th style={{ textAlign: 'center', padding: '16px 20px', fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase' }}>Status</th>
-                        <th style={{ textAlign: 'right', padding: '16px 20px', fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase' }}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredPayrolls.map((p, idx) => {
-                        const sColor = statusColors[p.status] || '#9CA3AF'
-                        return (
-                          <motion.tr key={p.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
-                            style={{ borderBottom: '1px solid #F8FAFC', cursor: 'pointer' }}
-                            whileHover={{ background: '#F8FAFC' }}
-                            onClick={() => { setSelectedPayroll(p); setShowPayslip(true); }}>
-                            <td style={{ padding: '20px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg,#7C3AED10,#7C3AED20)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 900, color: '#7C3AED' }}>{p.employee_name?.charAt(0)}</div>
-                                <div>
-                                  <div style={{ fontSize: 14, fontWeight: 800, color: '#1E293B' }}>{p.employee_name}</div>
-                                  <div style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8' }}>{p.employee_code}</div>
-                                </div>
-                              </div>
-                            </td>
-                            <td style={{ padding: '20px', fontSize: 14, fontWeight: 600, color: '#475569' }}>{p.period}</td>
-                            <td style={{ padding: '20px', textAlign: 'right', fontSize: 14, fontWeight: 800, color: '#1E293B' }}>₹{fmt(p.gross_wage)}</td>
-                            <td style={{ padding: '20px', textAlign: 'right', fontSize: 14, fontWeight: 800, color: '#F43F5E' }}>₹{fmt(p.total_deductions)}</td>
-                            <td style={{ padding: '20px', textAlign: 'right', fontSize: 15, fontWeight: 900, color: '#10B981' }}>₹{fmt(p.net_pay)}</td>
-                            <td style={{ padding: '20px', textAlign: 'center' }}>
-                              <span style={{ padding: '6px 12px', borderRadius: 20, background: sColor + '15', color: sColor, fontSize: 11, fontWeight: 800, textTransform: 'uppercase' }}>{p.status}</span>
-                            </td>
-                            <td style={{ padding: '20px' }} onClick={e => e.stopPropagation()}>
-                              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                                <ActionBtn onClick={() => handlePrintPayslip(p)} icon={<Printer size={16} />} color="#64748B" bg="#F8FAFC" />
-                                {isAdminOrPayroll && p.status !== 'paid' && (
-                                  <>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #F1F5F9' }}>
+                      <th style={{ padding: '16px 32px', textAlign: 'left', fontSize: 10, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase' }}>Employee</th>
+                      <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 10, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase' }}>Period</th>
+                      <th style={{ padding: '16px 20px', textAlign: 'right', fontSize: 10, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase' }}>Gross Wage</th>
+                      <th style={{ padding: '16px 20px', textAlign: 'right', fontSize: 10, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase' }}>Deductions</th>
+                      <th style={{ padding: '16px 20px', textAlign: 'right', fontSize: 10, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase' }}>Net Pay</th>
+                      <th style={{ padding: '16px 20px', textAlign: 'center', fontSize: 10, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase' }}>Status</th>
+                      <th style={{ padding: '16px 32px', textAlign: 'right', fontSize: 10, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredPayrolls.length === 0 ? (
+                      <tr><td colSpan={7} style={{ padding: 60, textAlign: 'center', color: '#94A3B8', fontWeight: 500 }}>No payroll records found for this selection.</td></tr>
+                    ) : (
+                      filteredPayrolls.map((p, i) => (
+                        <motion.tr key={p.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+                          style={{ borderBottom: '1px solid #F1F5F9', transition: 'background 0.2s' }}
+                          hoverstyle={{ background: '#F8FAFC' }}>
+                          <td style={{ padding: '20px 32px' }}>
+                            <div style={{ fontWeight: 800, color: '#0F172A', fontSize: 14 }}>{p.employee_name}</div>
+                            <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600, marginTop: 2 }}>{p.employee_code}</div>
+                          </td>
+                          <td style={{ padding: '20px 20px', fontSize: 13, fontWeight: 600, color: '#475569' }}>{p.period}</td>
+                          <td style={{ padding: '20px 20px', textAlign: 'right', fontSize: 14, fontWeight: 800, color: '#0F172A' }}>₹{fmt(p.gross_wage)}</td>
+                          <td style={{ padding: '20px 20px', textAlign: 'right', fontSize: 14, fontWeight: 700, color: '#F43F5E' }}>₹{fmt(p.total_deductions)}</td>
+                          <td style={{ padding: '20px 20px', textAlign: 'right', fontSize: 15, fontWeight: 900, color: '#10B981' }}>₹{fmt(p.net_pay)}</td>
+                          <td style={{ padding: '20px 20px', textAlign: 'center' }}>
+                            <span style={{ fontSize: 10, fontWeight: 900, padding: '6px 12px', borderRadius: 10, background: (statusColors[p.status] || '#94A3B8') + '15', color: statusColors[p.status] || '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', border: `1px solid ${(statusColors[p.status] || '#94A3B8')}30` }}>
+                              {p.status}
+                            </span>
+                          </td>
+                          <td style={{ padding: '20px 32px', textAlign: 'right' }}>
+                            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                              <ActionBtn onClick={() => { setSelectedPayroll(p); setShowPayslip(true) }} icon={<Printer size={16} />} title="View Payslip" />
+                              {isAdminOrPayroll && (
+                                <>
+                                  <ActionBtn onClick={() => { setAdjustmentData(p); setShowAdjustmentModal(true) }} icon={<FileText size={16} />} title="Manual Adjustments" />
+                                  {p.status !== 'paid' && (
                                     <ActionBtn 
-                                      onClick={() => { setAdjustmentData({...p}); setShowAdjustmentModal(true); }} 
-                                      icon={<FileText size={16} />} 
-                                      color="#7C3AED" bg="#F5F3FF" 
-                                      title="Manual Adjustment"
+                                      onClick={() => handleStatusCycle(p)} 
+                                      icon={<span style={{fontSize:10,fontWeight:900}}>{p.status==='draft'?'▶':'✓'}</span>} 
+                                      color={p.status==='approved'?'#10B981':'#7C3AED'} 
+                                      title={p.status==='draft'?'Mark Approved':'Mark Paid'} 
                                     />
-                                    <ActionBtn
-                                      onClick={() => handleStatusCycle(p)}
-                                      icon={<span style={{fontSize:10,fontWeight:900}}>{p.status==='draft'?'▶':'✓'}</span>}
-                                      color="#10B981" bg="#F0FDF4"
-                                      title={p.status==='draft'?'Mark Approved':'Mark Paid'}
-                                    />
-                                  </>
-                                )}
-                              </div>
-                            </td>
-                          </motion.tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </motion.tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </main>
       </div>
 
-      {/* Generation Confirmation Modal */}
+      {/* Generation Confirm Modal */}
       <AnimatePresence>
-        {showGenConfirm && previewData && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400, padding: 24 }}>
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-              style={{ background: '#fff', borderRadius: 24, width: '100%', maxWidth: 450, padding: 32, boxShadow: '0 40px 100px rgba(0,0,0,0.1)' }}>
+        {showGenConfirm && (
+          <Modal title="Confirm Payroll Generation" onClose={() => setShowGenConfirm(false)}>
+            <div style={{ display: 'flex', gap: 24 }}>
+              <div style={{ flex: 1, padding: 20, background: '#F8FAFC', borderRadius: 20 }}>
+                <h4 style={{ fontSize: 12, fontWeight: 800, color: '#64748B', marginBottom: 16 }}>ATTENDANCE SUMMARY</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <SummaryRow label="Working Days" value={previewData?.workingDays} />
+                  <SummaryRow label="Present Days" value={previewData?.presentDays} />
+                  <hr style={{ border: 'none', borderTop: '1px solid #E2E8F0' }} />
+                  <SummaryRow label="Fixed Salary" value={`₹${fmt(previewData?.fullSalary)}`} bold />
+                  <SummaryRow label="Attendance Pro-rata" value={`₹${fmt(previewData?.earnedSalary)}`} color="#7C3AED" bold />
+                </div>
+              </div>
               
-              <div style={{ textAlign: 'center', marginBottom: 24 }}>
-                <div style={{ width: 64, height: 64, borderRadius: 20, background: '#F5F3FF', color: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                  <TrendingUp size={32} />
+              <div style={{ flex: 1 }}>
+                <h4 style={{ fontSize: 12, fontWeight: 800, color: '#64748B', marginBottom: 16 }}>MANUAL OVERRIDES</h4>
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748B', marginBottom: 6 }}>Override Base Salary (Earned)</label>
+                  <input type="number" value={genOverrides.manual_basic} onChange={e => setGenOverrides({...genOverrides, manual_basic: e.target.value})}
+                    style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: '1px solid #E2E8F0', outline: 'none', fontWeight: 700, fontSize: 16 }} placeholder={previewData?.earnedSalary} />
                 </div>
-                <h3 style={{ fontSize: 20, fontWeight: 900, color: '#0F172A', margin: 0 }}>Review Salary Basis</h3>
-                <p style={{ color: '#64748B', fontSize: 14, marginTop: 8 }}>Finalize the base salary for {selectedEmployee?.firstName || selectedEmployee?.first_name} for this month.</p>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
-                <div style={{ padding: 16, background: '#F8FAFC', borderRadius: 16, border: '1px solid #E2E8F0' }}>
-                  <div style={{ fontSize: 10, fontWeight: 800, color: '#64748B', textTransform: 'uppercase', marginBottom: 4 }}>Fixed Salary</div>
-                  <div style={{ fontSize: 18, fontWeight: 900, color: '#1E293B' }}>₹{fmt(previewData.fullSalary)}</div>
-                </div>
-                <div style={{ padding: 16, background: '#F0FDF4', borderRadius: 16, border: '1px solid #BBF7D0' }}>
-                  <div style={{ fontSize: 10, fontWeight: 800, color: '#166534', textTransform: 'uppercase', marginBottom: 4 }}>Leave Based</div>
-                  <div style={{ fontSize: 18, fontWeight: 900, color: '#15803D' }}>₹{fmt(previewData.earnedSalary)}</div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748B', marginBottom: 6 }}>One-time Bonus</label>
+                  <input type="number" value={genOverrides.bonus} onChange={e => setGenOverrides({...genOverrides, bonus: e.target.value})}
+                    style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: '1px solid #E2E8F0', outline: 'none', fontWeight: 700, fontSize: 16 }} placeholder="0.00" />
                 </div>
               </div>
-
-              <div style={{ marginBottom: 24 }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: '#0F172A', marginBottom: 8, textTransform: 'uppercase' }}>Confirm Base Salary to pay</label>
-                <div style={{ position: 'relative' }}>
-                  <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', fontWeight: 900, color: '#7C3AED' }}>₹</span>
-                  <input 
-                    type="number" 
-                    value={genOverrides.manual_basic} 
-                    onChange={e => setGenOverrides({ ...genOverrides, manual_basic: e.target.value })}
-                    style={{ width: '100%', padding: '16px 16px 16px 32px', borderRadius: 16, border: '2.5px solid #7C3AED', background: '#fff', outline: 'none', fontSize: 18, fontWeight: 900, color: '#1E293B' }} 
-                  />
-                </div>
-                <p style={{ fontSize: 11, color: '#94A3B8', marginTop: 8, textAlign: 'center' }}>Leave it as {fmt(previewData.earnedSalary)} to follow attendance rules.</p>
-              </div>
-
-              <div style={{ display: 'flex', gap: 12 }}>
-                <button onClick={() => setShowGenConfirm(false)} style={{ flex: 1, height: 50, borderRadius: 14, border: 'none', background: '#F1F5F9', color: '#64748B', fontWeight: 800, cursor: 'pointer' }}>Cancel</button>
-                <button onClick={confirmAndGenerate} disabled={generating} style={{ ...btnPrimary, flex: 2, height: 50, justifyContent: 'center' }}>
-                  {generating ? 'Processing...' : 'Confirm & Create'}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
+            </div>
+            
+            <div style={{ marginTop: 32, display: 'flex', gap: 12 }}>
+              <button onClick={confirmAndGenerate} style={{ ...btnPrimary, flex: 1, height: 48, justifyContent: 'center' }}>Commit & Generate</button>
+              <button onClick={() => setShowGenConfirm(false)} style={{ padding: '0 24px', borderRadius: 14, border: '1px solid #E2E8F0', background: '#fff', fontWeight: 700, color: '#64748B', cursor: 'pointer' }}>Cancel</button>
+            </div>
+          </Modal>
         )}
       </AnimatePresence>
 
+      {/* Manual Adjustment Modal */}
       <AnimatePresence>
-        {showAdjustmentModal && adjustmentData && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: 24 }}>
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-              style={{ background: '#fff', borderRadius: 24, width: '100%', maxWidth: 500, padding: 32, boxShadow: '0 40px 100px rgba(0,0,0,0.1)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                <h3 style={{ fontSize: 18, fontWeight: 900, color: '#0F172A', margin: 0 }}>Manual Adjustments</h3>
-                <button onClick={() => setShowAdjustmentModal(false)} style={{ border: 'none', background: 'none', cursor: 'pointer' }}><X size={20} /></button>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                {[
-                  { label: 'Basic Salary', key: 'basic_salary' },
-                  { label: 'Performance Bonus', key: 'bonus' },
-                  { label: 'HRA', key: 'hra' },
-                  { label: 'Travel Allowance', key: 'travel_allowance' },
-                  { label: 'Other Allowance', key: 'other_allowance' },
-                  { label: 'PF Contribution', key: 'pf' },
-                  { label: 'Professional Tax', key: 'prof_tax' },
-                  { label: 'Income Tax (TDS)', key: 'tds' },
-                ].map(field => (
-                  <div key={field.key}>
-                    <label style={{ display: 'block', fontSize: 10, fontWeight: 800, color: '#64748B', marginBottom: 4, textTransform: 'uppercase' }}>{field.label}</label>
-                    <input 
-                      type="number" 
-                      value={adjustmentData[field.key] || 0} 
-                      onChange={e => setAdjustmentData({ ...adjustmentData, [field.key]: Number(e.target.value) })}
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1.5px solid #F1F5F9', background: '#F8FAFC', outline: 'none', fontSize: 13, fontWeight: 700 }}
-                    />
-                  </div>
-                ))}
-              </div>
-              <div style={{ marginTop: 24, padding: 16, background: '#F5F3FF', borderRadius: 16, textAlign: 'right' }}>
-                <div style={{ fontSize: 10, fontWeight: 900, color: '#7C3AED', textTransform: 'uppercase' }}>Estimated Net Pay</div>
-                <div style={{ fontSize: 24, fontWeight: 900, color: '#1E293B' }}>₹{fmt(adjustmentData.basic_salary + adjustmentData.bonus + adjustmentData.hra + adjustmentData.travel_allowance + adjustmentData.other_allowance - (adjustmentData.pf + adjustmentData.prof_tax + adjustmentData.tds))}</div>
-              </div>
-              <button onClick={handleSaveAdjustment} style={{ ...btnPrimary, width: '100%', justifyContent: 'center', height: 50, marginTop: 24 }}>Save Changes</button>
-            </motion.div>
-          </motion.div>
+        {showAdjustmentModal && (
+          <Modal title="Manual Salary Adjustments" onClose={() => setShowAdjustmentModal(false)}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+              <InputGroup label="Basic/Earned" value={adjustmentData.basic_salary} onChange={v => setAdjustmentData({...adjustmentData, basic_salary: Number(v)})} />
+              <InputGroup label="Bonus" value={adjustmentData.performance_bonus} onChange={v => setAdjustmentData({...adjustmentData, performance_bonus: Number(v), bonus: Number(v)})} />
+              <InputGroup label="HRA" value={adjustmentData.house_rent_allowance} onChange={v => setAdjustmentData({...adjustmentData, house_rent_allowance: Number(v), hra: Number(v)})} />
+              <InputGroup label="Standard Allowance" value={adjustmentData.standard_allowance} onChange={v => setAdjustmentData({...adjustmentData, standard_allowance: Number(v), travel_allowance: Number(v)})} />
+              <InputGroup label="PF (Employee)" value={adjustmentData.pf_employee} onChange={v => setAdjustmentData({...adjustmentData, pf_employee: Number(v), pf: Number(v)})} />
+              <InputGroup label="TDS" value={adjustmentData.tds} onChange={v => setAdjustmentData({...adjustmentData, tds: Number(v)})} />
+            </div>
+            <div style={{ marginTop: 24, padding: 16, background: '#F0F9FF', borderRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 700, color: '#0369A1' }}>New Net Calculation:</span>
+              <span style={{ fontSize: 20, fontWeight: 900, color: '#0369A1' }}>₹{fmt(adjustmentData.basic_salary + adjustmentData.bonus + adjustmentData.hra + adjustmentData.travel_allowance + adjustmentData.other_allowance - (adjustmentData.pf + adjustmentData.prof_tax + adjustmentData.tds))}</span>
+            </div>
+            <div style={{ marginTop: 32, display: 'flex', gap: 12 }}>
+              <button onClick={handleSaveAdjustment} style={{ ...btnPrimary, flex: 1, height: 48, justifyContent: 'center' }}>Save Adjustments</button>
+              <button onClick={() => setShowAdjustmentModal(false)} style={{ padding: '0 24px', borderRadius: 14, border: '1px solid #E2E8F0', background: '#fff', fontWeight: 700, color: '#64748B', cursor: 'pointer' }}>Cancel</button>
+            </div>
+          </Modal>
         )}
       </AnimatePresence>
 
+      {/* Payslip Modal */}
       <AnimatePresence>
         {showPayslip && selectedPayroll && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 24 }}
-            onClick={() => setShowPayslip(false)}>
-            <motion.div initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
-              style={{ background: '#fff', borderRadius: 32, boxShadow: '0 40px 100px rgba(0,0,0,0.25)', maxWidth: 880, width: '100%', maxHeight: '92vh', overflowY: 'auto', position: 'relative' }}
-              onClick={e => e.stopPropagation()}>
-              
-              <div style={{ padding: 40 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 40 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                    <div style={{ width: 56, height: 56, borderRadius: 18, background: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 16px rgba(124,58,237,0.3)' }}>
-                      <Sparkles color="#fff" size={28} />
-                    </div>
-                    <div>
-                      <h2 style={{ fontSize: 24, fontWeight: 900, color: '#0F172A', margin: 0, letterSpacing: '-1px' }}>Salary Statement</h2>
-                      <p style={{ margin: '4px 0 0', color: '#64748B', fontSize: 14, fontWeight: 600 }}>Period: {selectedPayroll.period}</p>
-                    </div>
-                  </div>
-                  <button onClick={() => setShowPayslip(false)} style={{ width: 44, height: 44, borderRadius: 16, border: 'none', background: '#F1F5F9', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B' }}>
-                    <X size={20} />
-                  </button>
+          <Modal title="Salary Statement" onClose={() => setShowPayslip(false)} wide>
+            <div id="payslip-content" style={{ padding: 40, border: '1px solid #E2E8F0', borderRadius: 12, background: '#fff' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 40 }}>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: 24, fontWeight: 900, color: '#7C3AED' }}>EmPay</h2>
+                  <p style={{ margin: '4px 0 0', color: '#64748B', fontSize: 12, fontWeight: 700 }}>SMART HR & PAYROLL SOLUTIONS</p>
                 </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 32, marginBottom: 40, padding: 32, background: '#F8FAFC', borderRadius: 24, border: '1px solid #EBEBF5' }}>
-                  <InfoItem label="Member Name" val={selectedPayroll.employee_name} />
-                  <InfoItem label="Employee Code" val={selectedPayroll.employee_code} />
-                  <InfoItem label="Department" val={selectedPayroll.department || 'General'} />
-                  <InfoItem label="Location" val={selectedPayroll.location || 'Head Office'} />
-                  <InfoItem label="UAN Number" val={selectedPayroll.uan || 'N/A'} />
-                  <InfoItem label="Days Count" val={`${selectedPayroll.days_present}/${selectedPayroll.working_days}`} />
-                </div>
-
-                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 40 }}>
-                  <thead>
-                    <tr style={{ borderBottom: '2px solid #F1F5F9' }}>
-                      <th style={{ padding: '12px 16px', textAlign: 'left', color: '#7C3AED', fontSize: 13, fontWeight: 900 }}>EARNINGS</th>
-                      <th style={{ padding: '12px 16px', textAlign: 'right', color: '#7C3AED', fontSize: 13, fontWeight: 900 }}>AMOUNT</th>
-                      <th style={{ padding: '12px 16px', textAlign: 'left', color: '#F43F5E', fontSize: 13, fontWeight: 900 }}>DEDUCTIONS</th>
-                      <th style={{ padding: '12px 16px', textAlign: 'right', color: '#F43F5E', fontSize: 13, fontWeight: 900 }}>AMOUNT</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      ['Basic Salary', selectedPayroll.basic_salary, 'PF Employee', selectedPayroll.pf_employee],
-                      ['House Rent Allowance', selectedPayroll.house_rent_allowance, 'Professional Tax', selectedPayroll.professional_tax],
-                      ['Standard Allowance', selectedPayroll.standard_allowance, 'Income Tax (TDS)', selectedPayroll.tds],
-                      ['Performance Bonus', selectedPayroll.performance_bonus, '', null],
-                      ['Travel Allowance', selectedPayroll.leave_travel_allowance, '', null],
-                    ].map(([e1, v1, e2, v2], i) => (
-                      <tr key={i}>
-                        <td style={{ padding: '14px 16px', fontSize: 14, fontWeight: 600, color: '#1E293B' }}>{e1}</td>
-                        <td style={{ padding: '14px 16px', fontSize: 14, fontWeight: 800, color: '#10B981', textAlign: 'right' }}>₹{fmt(v1)}</td>
-                        <td style={{ padding: '14px 16px', fontSize: 14, fontWeight: 600, color: '#1E293B' }}>{e2}</td>
-                        <td style={{ padding: '14px 16px', fontSize: 14, fontWeight: 800, color: '#F43F5E', textAlign: 'right' }}>{v2 !== null ? `₹${fmt(v2)}` : ''}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr style={{ background: '#F8FAFC', borderTop: '2px solid #EBEBF5' }}>
-                      <td style={{ padding: 20, fontSize: 15, fontWeight: 900 }}>Gross Total</td>
-                      <td style={{ padding: 20, fontSize: 15, fontWeight: 900, color: '#10B981', textAlign: 'right' }}>₹{fmt(selectedPayroll.gross_wage)}</td>
-                      <td style={{ padding: 20, fontSize: 15, fontWeight: 900 }}>Total Deductions</td>
-                      <td style={{ padding: 20, fontSize: 15, fontWeight: 900, color: '#F43F5E', textAlign: 'right' }}>₹{fmt(selectedPayroll.total_deductions)}</td>
-                    </tr>
-                  </tfoot>
-                </table>
-
-                <div style={{ padding: 32, background: 'linear-gradient(135deg, #7C3AED 0%, #5B21B6 100%)', borderRadius: 24, textAlign: 'right', boxShadow: '0 20px 40px rgba(124,58,237,0.2)' }}>
-                  <div style={{ fontSize: 12, fontWeight: 900, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.2em' }}>Net Payable Amount</div>
-                  <div style={{ fontSize: 42, fontWeight: 900, color: '#fff', letterSpacing: '-2px', marginTop: 8 }}>₹{fmt(selectedPayroll.net_pay)}</div>
-                </div>
-
-                <div style={{ marginTop: 40, display: 'flex', gap: 16 }}>
-                  <button onClick={() => handlePrintPayslip(selectedPayroll)} style={{ ...btnPrimary, flex: 1, justifyContent: 'center', height: 56, fontSize: 16 }}>
-                    <Printer size={20} /> Print Statement
-                  </button>
-                  <button onClick={() => setShowPayslip(false)} style={{ flex: 1, height: 56, borderRadius: 14, border: '2px solid #F1F5F9', background: '#fff', color: '#64748B', fontWeight: 800, fontSize: 16, cursor: 'pointer' }}>
-                    Dismiss
-                  </button>
+                <div style={{ textAlign: 'right' }}>
+                  <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>PAYSLIP</h3>
+                  <p style={{ margin: '4px 0 0', color: '#64748B', fontSize: 13, fontWeight: 600 }}>{selectedPayroll.period}</p>
                 </div>
               </div>
-            </motion.div>
-          </motion.div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, marginBottom: 40, padding: '24px 0', borderTop: '2px solid #F1F5F9', borderBottom: '2px solid #F1F5F9' }}>
+                <div>
+                  <PayslipInfo label="Employee Name" value={selectedPayroll.employee_name} />
+                  <PayslipInfo label="Employee ID" value={selectedPayroll.employee_code} />
+                  <PayslipInfo label="Department" value={selectedPayroll.department || 'General'} />
+                </div>
+                <div>
+                  <PayslipInfo label="Days Present" value={`${selectedPayroll.days_present} / ${selectedPayroll.working_days}`} />
+                  <PayslipInfo label="Payment Date" value={selectedPayroll.payment_date || 'Pending'} />
+                  <PayslipInfo label="Status" value={selectedPayroll.status?.toUpperCase()} />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 40, marginBottom: 40 }}>
+                <div style={{ flex: 1 }}>
+                  <h4 style={{ fontSize: 13, fontWeight: 800, color: '#0F172A', marginBottom: 16, paddingBottom: 8, borderBottom: '1px solid #E2E8F0' }}>EARNINGS</h4>
+                  <PayslipRow label="Basic Salary (Earned)" value={fmt(selectedPayroll.basic_salary)} />
+                  <PayslipRow label="HRA" value={fmt(selectedPayroll.house_rent_allowance)} />
+                  <PayslipRow label="Standard Allowance" value={fmt(selectedPayroll.standard_allowance)} />
+                  <PayslipRow label="Bonus" value={fmt(selectedPayroll.performance_bonus)} />
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed #E2E8F0' }}>
+                    <PayslipRow label="Gross Earnings" value={fmt(selectedPayroll.gross_wage)} bold />
+                  </div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <h4 style={{ fontSize: 13, fontWeight: 800, color: '#0F172A', marginBottom: 16, paddingBottom: 8, borderBottom: '1px solid #E2E8F0' }}>DEDUCTIONS</h4>
+                  <PayslipRow label="PF (Employee)" value={fmt(selectedPayroll.pf_employee)} />
+                  <PayslipRow label="Professional Tax" value={fmt(selectedPayroll.professional_tax)} />
+                  <PayslipRow label="TDS" value={fmt(selectedPayroll.tds)} />
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed #E2E8F0' }}>
+                    <PayslipRow label="Total Deductions" value={fmt(selectedPayroll.total_deductions)} bold />
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ padding: '24px 32px', background: '#F1F5F9', borderRadius: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 16, fontWeight: 800, color: '#0F172A' }}>NET SALARY PAYABLE</span>
+                <span style={{ fontSize: 28, fontWeight: 900, color: '#7C3AED' }}>₹{fmt(selectedPayroll.net_pay)}</span>
+              </div>
+            </div>
+            
+            <div style={{ marginTop: 32, display: 'flex', gap: 12 }}>
+              <button onClick={() => window.print()} style={{ ...btnPrimary, flex: 1, height: 48, justifyContent: 'center' }}><Printer size={18} /> Print Statement</button>
+              <button onClick={() => setShowPayslip(false)} style={{ padding: '0 24px', borderRadius: 14, border: '1px solid #E2E8F0', background: '#fff', fontWeight: 700, color: '#64748B', cursor: 'pointer' }}>Close</button>
+            </div>
+          </Modal>
         )}
       </AnimatePresence>
     </div>
   )
 }
 
-const FilterSelect = ({ label, value, options, onChange }) => (
-  <div style={{ minWidth: 140 }}>
-    <label style={{ display: 'block', fontSize: 10, fontWeight: 800, color: '#94A3B8', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{label}</label>
-    <select value={value} onChange={e => onChange(e.target.value)}
-      style={{ width: '100%', padding: '12px 16px', borderRadius: 14, border: '1.5px solid #E2E8F0', background: '#fff', fontSize: 14, fontWeight: 700, color: '#1E293B', outline: 'none', cursor: 'pointer' }}>
-      {options.map(opt => typeof opt === 'object' ? <option key={opt.v} value={opt.v}>{opt.l}</option> : <option key={opt} value={opt}>{opt}</option>)}
-    </select>
+const Modal = ({ title, children, onClose, wide }) => (
+  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+    style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+    <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }}
+      style={{ background: '#fff', borderRadius: 32, width: '100%', maxWidth: wide ? 1000 : 640, maxHeight: '90vh', overflow: 'auto', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', padding: 32, position: 'relative' }}>
+      <button onClick={onClose} style={{ position: 'absolute', top: 24, right: 24, background: '#F8FAFC', border: 'none', width: 40, height: 40, borderRadius: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B' }}><X size={20} /></button>
+      <h3 style={{ fontSize: 24, fontWeight: 900, color: '#0F172A', marginBottom: 32, letterSpacing: '-0.5px' }}>{title}</h3>
+      {children}
+    </motion.div>
+  </motion.div>
+)
+
+const ActionBtn = ({ onClick, icon, title, color = '#64748B' }) => (
+  <motion.button whileHover={{ y: -2, background: '#F1F5F9' }} whileTap={{ scale: 0.95 }}
+    onClick={onClick} title={title}
+    style={{ width: 36, height: 36, borderRadius: 10, border: '1px solid #E2E8F0', background: '#fff', color, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }}>
+    {icon}
+  </motion.button>
+)
+
+const SummaryRow = ({ label, value, color = '#64748B', bold }) => (
+  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: bold ? 800 : 600 }}>
+    <span style={{ color: '#64748B' }}>{label}</span>
+    <span style={{ color }}>{value}</span>
   </div>
 )
 
-const ActionBtn = ({ onClick, icon, color, bg, title }) => (
-  <button onClick={onClick} title={title} style={{ width: 38, height: 38, borderRadius: 12, border: 'none', background: bg, color: color, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
-    {icon}
-  </button>
+const InputGroup = ({ label, value, onChange }) => (
+  <div>
+    <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: '#64748B', marginBottom: 8, textTransform: 'uppercase' }}>{label}</label>
+    <input type="number" value={value} onChange={e => onChange(e.target.value)}
+      style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: '1px solid #E2E8F0', outline: 'none', fontWeight: 700, fontSize: 15 }} />
+  </div>
 )
 
-const InfoItem = ({ label, val }) => (
-  <div>
-    <div style={{ fontSize: 10, fontWeight: 900, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{label}</div>
-    <div style={{ fontSize: 16, fontWeight: 900, color: '#0F172A', marginTop: 4 }}>{val}</div>
+const PayslipInfo = ({ label, value }) => (
+  <div style={{ marginBottom: 12 }}>
+    <div style={{ fontSize: 10, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', marginBottom: 2 }}>{label}</div>
+    <div style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>{value}</div>
+  </div>
+)
+
+const PayslipRow = ({ label, value, bold }) => (
+  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 13, fontWeight: bold ? 800 : 500 }}>
+    <span style={{ color: bold ? '#0F172A' : '#64748B' }}>{label}</span>
+    <span style={{ color: '#0F172A' }}>₹{value}</span>
   </div>
 )
 
