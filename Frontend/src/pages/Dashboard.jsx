@@ -11,6 +11,13 @@ import { useNavigate } from 'react-router-dom'
 const API_BASE = 'http://localhost:5000/api'
 
 const PIE_COLORS  = ['#7C3AED', '#38BDF8', '#FB923C', '#10B981', '#F43F5E', '#F59E0B']
+const fmtHours = (h) => {
+  if (!h) return '0h 00m'
+  const hrs = Math.floor(h)
+  const mins = Math.round((h - hrs) * 60)
+  return `${hrs}h ${mins > 0 ? mins + 'm' : '00m'}`
+}
+
 const card        = { background: '#fff', borderRadius: 16, padding: '20px 22px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #EBEBF5' }
 const btnPrimary  = { padding: '9px 18px', borderRadius: 10, border: 'none', background: '#7C3AED', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 14px rgba(124,58,237,0.3)' }
 const btnOutline  = { padding: '9px 18px', borderRadius: 10, border: '1.5px solid #E5E7EB', background: '#fff', color: '#111827', fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6 }
@@ -175,11 +182,11 @@ function AttendanceChart({ barData, label, subtitle, isPayroll }) {
 }
 
 export default function Dashboard() {
-  const { user, checkIn, checkOut, autoCheckOut, getTodayAttendance, fetchEmployees, fetchReportsSummary, fetchTimeOffRequests, hasPermission, approveTimeOff } = useAuthStore()
+  const { user, checkIn, checkOut, autoCheckOut, getTodayAttendance, fetchEmployees, fetchReportsSummary, fetchTimeOffRequests, fetchAttendance, hasPermission, approveTimeOff } = useAuthStore()
   const navigate = useNavigate()
 
   const [state, setState] = useState({
-    employees: [], todayAtt: [], leaveRequests: [],
+    employees: [], todayAtt: [], leaveRequests: [], monthlyAttendance: [],
     summary: { totalEmployees: 0, presentToday: 0, pendingLeaves: 0, totalPayroll: 0, monthlyPayrollCost: 0, monthlyPayroll: [], departmentDistribution: [], attendanceTrend: [] },
     checkedIn: false, checkInTime: null, loading: true,
   })
@@ -215,17 +222,27 @@ export default function Dashboard() {
   const load = useCallback(async () => {
     set({ loading: true })
     try {
-      const [att, emps, leaves] = await Promise.all([
+      const [att, emps, leaves, myAtt] = await Promise.all([
         getTodayAttendance().catch(() => []),
         fetchEmployees().catch(() => []),
         fetchTimeOffRequests().catch(() => []),
+        fetchAttendance().catch(() => []),
       ])
       let summary = { totalEmployees: (emps || []).length, presentToday: 0, pendingLeaves: 0, totalPayroll: 0, monthlyPayrollCost: 0, monthlyPayroll: [], departmentDistribution: [], attendanceTrend: [] }
       if (hasPermission('reports', 'view')) {
         try { summary = await fetchReportsSummary() } catch (_) {}
       }
       const my = (att || []).find(a => a.user_id === user?.id)
-      set({ employees: emps || [], todayAtt: att || [], leaveRequests: (leaves || []).slice(0, 5), summary, checkedIn: !!my?.check_in, checkInTime: my?.check_in || null, loading: false })
+      set({ 
+        employees: emps || [], 
+        todayAtt: att || [], 
+        leaveRequests: (leaves || []).slice(0, 5), 
+        monthlyAttendance: myAtt || [],
+        summary, 
+        checkedIn: !!my?.check_in, 
+        checkInTime: my?.check_in || null, 
+        loading: false 
+      })
     } catch (e) { console.error(e); set({ loading: false }) }
   }, [user])
 
@@ -301,7 +318,7 @@ export default function Dashboard() {
     toast.success('Report exported!')
   }
 
-  const { employees, todayAtt, leaveRequests, summary, checkedIn, checkInTime, loading } = state
+  const { employees, todayAtt, leaveRequests, monthlyAttendance, summary, checkedIn, checkInTime, loading } = state
   const presentCount = todayAtt.filter(a => a.status === 'present').length
 
   const barData = summary.attendanceTrend?.length > 0
@@ -323,6 +340,7 @@ export default function Dashboard() {
   const budgetPct         = monthlyBudget > 0 ? Math.round((monthlyPayrollCost / monthlyBudget) * 100) : 0
   const canApprove        = hasPermission('time_off', 'approve')
   const isPayroll         = summary.monthlyPayroll?.length > 0 && !summary.attendanceTrend?.length
+  const todayRecord       = monthlyAttendance.find(r => r.date === new Date().toISOString().split('T')[0])
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#F4F6FB', fontFamily: "'DM Sans', sans-serif" }}>
@@ -369,10 +387,21 @@ export default function Dashboard() {
 
           {/* Stat Cards */}
           <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
-            <StatCard loading={loading} title="Total Employees"    value={summary.totalEmployees || employees.length}                                            icon="👥" badge="+4% vs LW"                                              badgeColor="#10B981" />
-            <StatCard loading={loading} title="Present Today"      value={summary.presentToday ?? presentCount}                                                  icon="👤" badge={`${occupancyPct}% Occupancy`}                            badgeColor="#3B82F6" />
-            <StatCard loading={loading} title="Pending Leaves"     value={pendingLeavesCount}                                                                    icon="📅" badge={pendingLeavesCount > 0 ? 'Action Needed' : 'All Clear'} badgeColor={pendingLeavesCount > 0 ? '#F59E0B' : '#10B981'} />
-            <StatCard loading={loading} title="Monthly Payroll Cost" value={`₹${monthlyPayrollCost.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}     icon="💰" badge={monthlyPayrollCost > 0 ? `Budget: ${budgetPct}%` : 'No data'} badgeColor={budgetPct > 90 ? '#EF4444' : '#10B981'} />
+            {user?.role !== ROLES.EMPLOYEE ? (
+              <>
+                <StatCard loading={loading} title="Total Employees"    value={summary.totalEmployees || employees.length}                                            icon="👥" badge="+4% vs LW"                                              badgeColor="#10B981" />
+                <StatCard loading={loading} title="Present Today"      value={summary.presentToday ?? presentCount}                                                  icon="👤" badge={`${occupancyPct}% Occupancy`}                            badgeColor="#3B82F6" />
+                <StatCard loading={loading} title="Pending Leaves"     value={pendingLeavesCount}                                                                    icon="📅" badge={pendingLeavesCount > 0 ? 'Action Needed' : 'All Clear'} badgeColor={pendingLeavesCount > 0 ? '#F59E0B' : '#10B981'} />
+                <StatCard loading={loading} title="Monthly Payroll Cost" value={`₹${monthlyPayrollCost.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}     icon="💰" badge={monthlyPayrollCost > 0 ? `Budget: ${budgetPct}%` : 'No data'} badgeColor={budgetPct > 90 ? '#EF4444' : '#10B981'} />
+              </>
+            ) : (
+              <>
+                <StatCard loading={loading} title="My Attendance"      value={`${monthlyAttendance.filter(r => r.check_in).length} Days`}                            icon="🗓️" badge="This Month"                                             badgeColor="#10B981" />
+                <StatCard loading={loading} title="Leaves Remaining"   value={`${24 - (leaveRequests.filter(l => l.status === 'approved').reduce((sum, l) => sum + (l.days || 1), 0))} / 24`} icon="🌴" badge="Paid Leaves"                                           badgeColor="#3B82F6" />
+                <StatCard loading={loading} title="My Status"          value={checkedIn ? 'Logged In' : 'Logged Out'}                                                icon="⏱️" badge={checkedIn ? `Since ${checkInTime}` : 'Not started'}     badgeColor={checkedIn ? '#10B981' : '#64748B'} />
+                <StatCard loading={loading} title="Work Hours"         value={`${fmtHours(todayRecord?.work_hours || 0)}`}                                          icon="⌛" badge="Today"                                                   badgeColor="#7C3AED" />
+              </>
+            )}
           </div>
 
           {/* Charts Row */}
