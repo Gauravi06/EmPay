@@ -155,7 +155,11 @@ def generate_payroll(current_user):
     working_days = _get_working_days(year, month)
     present_days = _get_present_days(conn, employee_id, year, month)
 
-    earned_salary = round(full_salary * (present_days / working_days), 2) if working_days > 0 else full_salary
+    manual_basic = data.get('manual_basic')
+    if manual_basic is not None:
+        earned_salary = float(manual_basic)
+    else:
+        earned_salary = round(full_salary * (present_days / working_days), 2) if working_days > 0 else full_salary
 
     bonus            = data.get('bonus', 0)
     hra              = round(earned_salary * 0.4, 2) # 40% HRA

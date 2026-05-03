@@ -50,6 +50,8 @@ const Payroll = () => {
   const [showPayslip, setShowPayslip] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   
+  const [genOverrides, setGenOverrides] = useState({ manual_basic: '', bonus: '' })
+  
   const [monthlyBudget, setMonthlyBudget] = useState(0)
   const [isEditingBudget, setIsEditingBudget] = useState(false)
   const [showAdjustmentModal, setShowAdjustmentModal] = useState(false)
@@ -110,8 +112,12 @@ const Payroll = () => {
     return true
   })
 
-  const totalPayrollCost = filteredPayrolls.reduce((sum, p) => sum + (p.net_pay || 0), 0)
+  const totalPayrollCost = payrolls
+    .filter(p => p.year === selectedYear && p.month === selectedMonth)
+    .reduce((sum, p) => sum + (p.net_pay || 0), 0)
+    
   const budgetUtilization = monthlyBudget > 0 ? (totalPayrollCost / monthlyBudget) * 100 : 0
+  const remainingBudget = monthlyBudget - totalPayrollCost
 
   const handleGeneratePayroll = async () => {
     const targetEmployee = selectedEmployee
@@ -130,9 +136,13 @@ const Payroll = () => {
 
     setGenerating(true)
     try {
-      await generatePayroll(targetEmployee.id, selectedYear, selectedMonth)
+      await generatePayroll(targetEmployee.id, selectedYear, selectedMonth, {
+        bonus: Number(genOverrides.bonus || 0),
+        manual_basic: genOverrides.manual_basic ? Number(genOverrides.manual_basic) : undefined
+      })
       toast.success(`Payroll generated for ${targetEmployee.firstName || targetEmployee.first_name}`)
       loadData()
+      setGenOverrides({ manual_basic: '', bonus: '' })
     } catch (e) {
       toast.error(e.message || 'Failed to generate payroll')
     } finally {
@@ -211,10 +221,18 @@ const Payroll = () => {
                 )}
                 
                 {canGeneratePayroll && (
-                  <button onClick={handleGeneratePayroll} disabled={generating} style={{ ...btnPrimary, height: 46 }}>
-                    {generating ? <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/20 border-t-white" /> : <Plus size={18} />}
-                    {generating ? 'Processing...' : 'Generate Payroll'}
-                  </button>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+                    <div style={{ minWidth: 100 }}>
+                      <label style={{ display: 'block', fontSize: 10, fontWeight: 800, color: '#94A3B8', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Manual Base</label>
+                      <input type="number" placeholder="Auto" value={genOverrides.manual_basic}
+                        onChange={e => setGenOverrides({ ...genOverrides, manual_basic: e.target.value })}
+                        style={{ width: '100%', padding: '12px 16px', borderRadius: 14, border: '1.5px solid #E2E8F0', background: '#fff', fontSize: 13, fontWeight: 700, outline: 'none' }} />
+                    </div>
+                    <button onClick={handleGeneratePayroll} disabled={generating} style={{ ...btnPrimary, height: 46 }}>
+                      {generating ? <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/20 border-t-white" /> : <Plus size={18} />}
+                      {generating ? 'Processing...' : 'Generate'}
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -239,9 +257,9 @@ const Payroll = () => {
                   )}
                 </div>
                 <div style={{ width: 1, height: 40, background: '#EBEBF5' }} />
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 10, fontWeight: 800, color: budgetUtilization > 90 ? '#F43F5E' : '#64748B', textTransform: 'uppercase', marginBottom: 4 }}>Utilization</div>
-                  <div style={{ fontSize: 24, fontWeight: 900, color: budgetUtilization > 90 ? '#F43F5E' : '#10B981' }}>{fmt(budgetUtilization)}%</div>
+                <div style={{ flex: 1, textAlign: 'right' }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: remainingBudget < 0 ? '#F43F5E' : '#64748B', textTransform: 'uppercase', marginBottom: 4 }}>Remaining</div>
+                  <div style={{ fontSize: 24, fontWeight: 900, color: remainingBudget < 0 ? '#F43F5E' : '#10B981' }}>₹{fmt(remainingBudget)}</div>
                 </div>
               </div>
             </div>
