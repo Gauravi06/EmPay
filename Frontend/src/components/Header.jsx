@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Bell, Mail, Search, LogOut, User, ChevronDown, Sparkles } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
