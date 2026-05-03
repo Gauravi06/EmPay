@@ -175,17 +175,19 @@ const TimeOff = () => {
           </div>
 
           {/* Balance Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-            {Object.values(TIME_OFF_TYPES).map(type => {
-              const remaining = getRemainingDays(type)
-              return (
-                <div key={type} className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-sm border border-white p-5 hover:shadow-md transition-shadow">
-                  <p className="text-xs font-semibold text-gray-500 tracking-wide uppercase">{getTypeLabel(type)}</p>
-                  <p className="text-2xl font-bold text-indigo-600 mt-2">{remaining === 'Unlimited' ? '∞' : remaining}</p>
-                  <p className="text-xs text-gray-400 mt-1">Days Available</p>
-                </div>
-              )
-            })}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+            {Object.values(TIME_OFF_TYPES)
+              .filter(type => type !== TIME_OFF_TYPES.UNPAID)
+              .map(type => {
+                const remaining = getRemainingDays(type)
+                return (
+                  <div key={type} className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-sm border border-white p-5 hover:shadow-md transition-shadow">
+                    <p className="text-xs font-semibold text-gray-500 tracking-wide uppercase">{getTypeLabel(type)}</p>
+                    <p className="text-2xl font-bold text-indigo-600 mt-2">{remaining === 'Unlimited' ? '∞' : remaining}</p>
+                    <p className="text-xs text-gray-400 mt-1">Days Available</p>
+                  </div>
+                )
+              })}
           </div>
 
           {/* Filters */}
@@ -204,9 +206,11 @@ const TimeOff = () => {
               <select value={filterType} onChange={e => setFilterType(e.target.value)}
                 className="px-4 py-2 border-0 bg-white shadow-sm rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 cursor-pointer hover:shadow-md transition-shadow">
                 <option value="all">All Types</option>
-                {Object.values(TIME_OFF_TYPES).map(t => (
-                  <option key={t} value={t}>{getTypeLabel(t)}</option>
-                ))}
+                {Object.values(TIME_OFF_TYPES)
+                  .filter(t => t !== TIME_OFF_TYPES.UNPAID)
+                  .map(t => (
+                    <option key={t} value={t}>{getTypeLabel(t)}</option>
+                  ))}
               </select>
               {isAdminOrHR && (
                 <select value={selectedEmployee?.id || ''}
@@ -368,9 +372,11 @@ const TimeOff = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Time Off Type</label>
                   <select value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
-                    {Object.values(TIME_OFF_TYPES).map(t => (
-                      <option key={t} value={t}>{getTypeLabel(t)}</option>
-                    ))}
+                    {Object.values(TIME_OFF_TYPES)
+                      .filter(t => t !== TIME_OFF_TYPES.UNPAID)
+                      .map(t => (
+                        <option key={t} value={t}>{getTypeLabel(t)}</option>
+                      ))}
                   </select>
                 </div>
 

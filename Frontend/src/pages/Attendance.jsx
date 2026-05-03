@@ -642,7 +642,7 @@ const Attendance = () => {
   const [showManual, setShowManual] = useState(false)
   const [showOfficeSettings, setShowOfficeSettings] = useState(false)
   const [editingRecord, setEditingRecord] = useState(null)
-  
+
   const [officeSettings, setOfficeSettings] = useState(() => {
     const saved = localStorage.getItem('empay_office_hours')
     return saved ? JSON.parse(saved) : { start: '09:00', end: '18:00' }
