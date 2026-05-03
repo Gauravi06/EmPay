@@ -881,11 +881,10 @@ const Attendance = () => {
             {isAdminOrHR && (
               <>
                 {/* Stat cards */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
                   <StatCard icon={Users} label="Total Employees" value={employees.length} color="blue" />
                   <StatCard icon={UserCheck} label="Present Today" value={presentCount} color="green"
                     sub={`${employees.length > 0 ? Math.round(presentCount / employees.length * 100) : 0}% attendance`} />
-                  <StatCard icon={XCircle} label="Absent Today" value={absentCount} color="red" />
                   <StatCard icon={TrendingUp} label="On Time"
                     value={`${presentCount > 0 ? Math.round(onTimeCount / presentCount * 100) : 0}%`}
                     color="purple" sub="of present employees" />
@@ -1186,9 +1185,8 @@ const Attendance = () => {
                   </div>
 
                   {/* Row 2: Stat cards */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
                     <StatCard icon={CheckCircle2} label="Present Days" value={presentDays} color="green" sub={`of ${totalWorkDays} working days`} />
-                    <StatCard icon={XCircle} label="Absent Days" value={Math.max(0, totalWorkDays - presentDays - leaveCount)} color="red" />
                     <StatCard icon={AlertCircle} label="Late Marks" value={lateDays} color="amber" sub="after 9:05 AM" />
                   </div>
 
